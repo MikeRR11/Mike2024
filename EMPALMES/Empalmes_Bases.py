@@ -1,6 +1,19 @@
-#Desarrollo de Empalmes 
-#Semillero de Investigación y Desrrollo (2024)
-#Yaritza Quevedo - Michael Rojas
+# -*- coding: utf-8 -*-
+"""
+Descripción:
+    Este script realiza empalmes entre clases de entidad de dos geodatabases en ArcGIS Pro.
+    Requiere cuatro parámetros de entrada:
+        1. GDB_Entrada: La ruta de la geodatabase de entrada.
+        2. GDB_Adyacente: La ruta de la geodatabase adyacente para realizar los empalmes.
+        3. Carpeta_Salida: La carpeta de salida donde se creará la nueva geodatabase con los resultados.
+        4. Buffer: El tamaño del buffer para los empalmes.
+Formato de salida:
+    Se creará una nueva geodatabase en la carpeta de salida, con clases de entidad que contienen los empalmes.
+"""
+
+# Desarrollo de Empalmes
+# Semillero de Investigación y Desarrollo (2024)
+# Yaritza Quevedo - Michael Rojas
 
 import arcpy
 import os
@@ -21,16 +34,27 @@ arcpy.AddMessage("Geodatabase creada correctamente.")
 
 # Definir diccionario de campos comunes por feature class
 campos_comunes = {
-    "monda": "CAMPO",
-    "Cerca": "CampoComunCerca",
-    "Muro": "CampoComunMuro",
-    "Ldemar": "CampoComunLdemar",
-    "Terrap": "CampoComunTerrap",
-    "Via": "CampoComunVia",
-    "Puente_L": "CampoComunPuente_L",
-    "VFerre": "CampoComunVFerre",
-    "LVia": "CampoComunLVia",
-    "SVial": "CampoComunSVial"
+    "Cerca": "RuleID",
+    "Muro": "RuleID",
+    "Ldemar": "RuleID",
+    "Terrap": "RuleID",
+    "Via": "RuleID",
+    "Puente_L": "RuleID",
+    "VFerre": "RuleID",
+    "LVia": "RuleID",
+    "SVial": "RuleID",
+    "Telefe": "RuleID",
+    "Tunel": "RuleID",
+    "Ciclor": "RuleID",
+    "Drenaj_L": "RuleID",
+    "DAgua_L": "RuleID",
+    "LCoste": "RuleID",
+    "LCNivel": "RuleID",
+    "LDterr": "RuleID",
+    "RATens": "RuleID",
+    "Tuberi": "RuleID",
+    "Fronte": "RuleID",
+    "Llimit": "RuleID",
 }
 
 # Lista de todas las clases de entidad en ambas geodatabases
@@ -57,10 +81,17 @@ for fc in common_feature_classes:
         
         # Crea la clase de entidad de salida
         out_fc = gdb + "\\" + fc + "_Empalmes"
-        arcpy.management.CreateFeatureclass(gdb, fc + "_Empalmes", "POLYGON", GDB_Entrada + "\\" + fc)
+        arcpy.management.CreateFeatureclass(gdb, fc + "_Empalmes", "POLYLINE", GDB_Entrada + "\\" + fc)
         
         # Ejecuta GenerateEdgematchLinks con el campo común
-        arcpy.GenerateEdgematchLinks_edit(GDB_Entrada + "\\" + fc, GDB_Adyacente + "\\" + fc, out_fc, Buffer, [(campo_comun, campo_comun)])
-        arcpy.AddMessage(f"Empalmes generados para la clase de entidad {fc}")
+        empalmes = arcpy.edit.GenerateEdgematchLinks(GDB_Entrada + "\\" + fc, GDB_Adyacente + "\\" + fc, out_fc, Buffer, [(campo_comun, campo_comun)])
+        conteo = arcpy.management.GetCount(empalmes)
+         # Si la clase de entidad está vacía
+        if int(conteo[0]) == 0:
+                # Elimina la clase de entidad
+                arcpy.Delete_management(empalmes)
+        else:
+         arcpy.AddMessage(f"Empalmes generados para la clase de entidad {fc}")   
     else:
-        arcpy.AddMessage(f"La clase de entidad {fc} no se encuentra en el diccionario de campos comunes y se omitirá")
+        pass
+        #arcpy.AddMessage(f"La clase de entidad {fc} no se encuentra en el diccionario de campos comunes y se omitirá")
