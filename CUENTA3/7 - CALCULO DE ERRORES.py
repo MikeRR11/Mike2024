@@ -1,5 +1,5 @@
 import arcpy, os, time
-
+#Buenas
 carpeta_origen = arcpy.GetParameterAsText(5)
 gdb_origen = arcpy.GetParameterAsText(0)
 gdb_dataReview = arcpy.GetParameterAsText(2)
