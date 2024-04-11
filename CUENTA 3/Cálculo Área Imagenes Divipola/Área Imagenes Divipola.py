@@ -21,13 +21,12 @@ from arcpy.sa import *
 import os
 
 arcpy.env.overwriteOutput = True
-#Llamar municipios y MDT
+#Llamar municipios
 
 # gdb = r"\\172.26.0.20\Elite_Sub_Geografia_Cartografia\Coberturas\GDB_FLET_Agosto_2023.gdb"
-# MDT = r"\\172.26.0.20\Elite_Sub_Geografia_Cartografia\MD\Proyectos\SRTM30_Origen_Unico\srtm_30_extend.img"
 
 codigos = arcpy.GetParameter(0)
-gdb = arcpy.GetParameterAsText(1)
+GDB = arcpy.GetParameterAsText(1)
 MDT = arcpy.GetParameterAsText(2)
 ruta_salida = arcpy.GetParameterAsText(3)
 codigos_2 = []
@@ -37,25 +36,15 @@ cod_tup = tuple(codigos_2)
 codigos_tupla = tuple(codigos)
 
 #Funcion para Seleccionar municipios ------------------------------------------------------
-def seleccion_municipios(gdb, codigos_tupla, ruta_salida):
+def seleccion_municipios(GDB, codigos_tupla, ruta_salida):
     arcpy.AddMessage("Procesando municipios")
-    arcpy.env.workspace = gdb
+    arcpy.env.workspace = GDB
     query_prueba = "MpCodigo IN {}".format(codigos_tupla)
     select = arcpy.SelectLayerByAttribute_management('Munpio', "NEW_SELECTION", query_prueba)
     temp = arcpy.management.CopyFeatures (select, os.path.join(ruta_salida, "Mun.shp"))
-    return temp      
+    return temp         
              
-
-#Funcion para Seleccionar municipios ------------------------------------------------------
-def seleccion_municipios(gdb, codigos_tupla, ruta_salida):
-    arcpy.AddMessage("Procesando municipios")
-    arcpy.env.workspace = gdb
-    query_prueba = "MpCodigo IN {}".format(codigos_tupla)
-    select = arcpy.SelectLayerByAttribute_management('Munpio', "NEW_SELECTION", query_prueba)
-    temp = arcpy.management.CopyFeatures (select, os.path.join(ruta_salida, "Mun.shp"))
-    return temp      
-             
-#Funcion para clasificar pendientes ------------------------------------------------------
+#Funcion para seleccionar imagenes con Divipola ------------------------------------------------------
 def clip(temp, MDT, ruta_salida):
     arcpy.AddMessage("Iniciando Clasificación")
     arcpy.env.workspace = ruta_salida
@@ -124,7 +113,7 @@ def Reporte(shp, ruta_salida, codigos_tupla):
         elif max_pendiente == Pendiente4:
             archivo.write("La mayor pendiente es >35 % ------ {0} hectáreas.\n".format(str(max_pendiente)))
         
-select = seleccion_municipios(gdb, cod_tup,ruta_salida)
+select = seleccion_municipios(GDB, cod_tup,ruta_salida)
 shp =  clip(select, MDT, ruta_salida)
 Reporte(shp, ruta_salida, codigos_tupla)
 arcpy.Delete_management([select,shp])
