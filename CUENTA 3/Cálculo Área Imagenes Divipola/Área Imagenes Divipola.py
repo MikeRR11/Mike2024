@@ -39,13 +39,14 @@ cod_tup = tuple(codigos_2)
 codigos_tupla = tuple(codigos)
 
 #Funcion para Seleccionar municipios ------------------------------------------------------
-def seleccion_municipios(gdb, codigos_tupla, ruta_salida):
+def seleccion_municipios(gdb, codigos_tupla, ruta_salida, ORTO):
     arcpy.AddMessage("Procesando municipios")
     arcpy.env.workspace = gdb
     query_prueba = "MpCodigo IN {}".format(codigos_tupla)
     select = arcpy.SelectLayerByAttribute_management('Munpio', "NEW_SELECTION", query_prueba)
     temp = arcpy.management.CopyFeatures (select, os.path.join(ruta_salida, "Mun.shp"))
-    return temp      
+    intersect = arcpy.analysis.Intersect([ORTO, temp],os.path.join(str(ruta_salida),'Imagenes_DIvipola.shp'),'ALL','','POINT')
+    return intersect
              
 
 #Funcion para generar reporte ------------------------------------------------------
@@ -53,6 +54,7 @@ def Reporte(shp, ruta_salida, codigos_tupla):
     arcpy.AddMessage("Iniciando Reporte")
     espacios = "    "
     ruta_reporte = os.path.join(ruta_salida, 'Reporte de Área de Pendientes.txt')
+    #Encabezado
     with open(ruta_reporte, "w") as archivo:
         archivo.write("REPORTE DE ÁREAS DE PENDIENTES\n")
         archivo.write("-----------------------------------------------------\n")
@@ -60,11 +62,15 @@ def Reporte(shp, ruta_salida, codigos_tupla):
         archivo.write("\n")
         archivo.write("PENDIENTE\t\t\tÁREA\t\t  PORCENTAJE\n")
         
-        # Calcula el área total de todas las entidades en la capa
+        # Calcula el área efectiva total de todas las entidades en la capa
         total_area = 0
         with arcpy.da.SearchCursor(shp, ["SHAPE@AREA"]) as cursor:
             for row in cursor:
-                total_area = row[0] + total_area
+                if Nubes == True:
+                    total_area = row[0] + total_area
+                    
+                else:
+                    total_area = row[0] + total_area
 
         total_area = round((total_area/10000), 2)
 
