@@ -16,19 +16,22 @@
 
 # #dentro de las bases hay un campo nubes y sombras, al calculo tener en cuenta nubes y sombras, si se tienen en cuenta se resta al área efectiva del proyecto, poner boton
 
+
 import arcpy
 from arcpy.sa import *
 import os
 
 arcpy.env.overwriteOutput = True
-#Llamar municipios
+#Llamar municipios elite
 
 # gdb = r"\\172.26.0.20\Elite_Sub_Geografia_Cartografia\Coberturas\GDB_FLET_Agosto_2023.gdb"
 
-codigos = arcpy.GetParameter(0)
-GDB = arcpy.GetParameterAsText(1)
-MDT = arcpy.GetParameterAsText(2)
-ruta_salida = arcpy.GetParameterAsText(3)
+codigos = arcpy.GetParameter(0) #Ingreso codigos Divipola
+gdb = arcpy.GetParameterAsText(1) #Ruta Elite municipios
+ORTO = arcpy.GetParameterAsText(2) #Imagenes de Entrada
+ruta_salida = arcpy.GetParameterAsText(3) # Ruta Salida
+Nubes = arcpy.GetParameterAsText(4) #Incluir Nubes
+
 codigos_2 = []
 for cod in codigos:
     codigos_2.append(cod)
@@ -36,30 +39,14 @@ cod_tup = tuple(codigos_2)
 codigos_tupla = tuple(codigos)
 
 #Funcion para Seleccionar municipios ------------------------------------------------------
-def seleccion_municipios(GDB, codigos_tupla, ruta_salida):
+def seleccion_municipios(gdb, codigos_tupla, ruta_salida):
     arcpy.AddMessage("Procesando municipios")
-    arcpy.env.workspace = GDB
+    arcpy.env.workspace = gdb
     query_prueba = "MpCodigo IN {}".format(codigos_tupla)
     select = arcpy.SelectLayerByAttribute_management('Munpio', "NEW_SELECTION", query_prueba)
     temp = arcpy.management.CopyFeatures (select, os.path.join(ruta_salida, "Mun.shp"))
-    return temp         
+    return temp      
              
-#Funcion para seleccionar imagenes con Divipola ------------------------------------------------------
-def clip(temp, MDT, ruta_salida):
-    arcpy.AddMessage("Iniciando Clasificación")
-    arcpy.env.workspace = ruta_salida
-    #Iterador para municipios
-    #Hacer recorte del MDT
-    clip_raster = arcpy.management.Clip(MDT, temp, os.path.join(ruta_salida, "Clip.tif"), in_template_dataset=temp, clipping_geometry=True, maintain_clipping_extent="MAINTAIN_EXTENT")
-    slope = arcpy.sa.Slope(clip_raster, output_measurement='PERCENT_RISE', method='PLANAR', analysis_target_device='GPU_THEN_CPU')
-    slope.save(os.path.join(ruta_salida, "MDT_Slope.tif"))
-    myRemapRange = RemapRange([[0, 10, 1], [10, 20, 2], [20, 35, 3], [35, 999999999999999, 4]])
-    OutReclass = Reclassify(slope, "VALUE", myRemapRange)
-    OutReclass.save(os.path.join(ruta_salida, "MDT_Reclass.tif"))
-    arcpy.AddMessage("Clasificación Exitosa")
-    shp = arcpy.conversion.RasterToPolygon(OutReclass, os.path.join(ruta_salida, "MDT_Shape.shp"), "NO_SIMPLIFY", "VALUE", "MULTIPLE_OUTER_PART")
-    arcpy.Delete_management([OutReclass,slope,clip_raster])
-    return shp
 
 #Funcion para generar reporte ------------------------------------------------------
 def Reporte(shp, ruta_salida, codigos_tupla):
@@ -112,8 +99,7 @@ def Reporte(shp, ruta_salida, codigos_tupla):
             archivo.write("La mayor pendiente es 20-35 % ------ {0} hectáreas.\n".format(str(max_pendiente)))
         elif max_pendiente == Pendiente4:
             archivo.write("La mayor pendiente es >35 % ------ {0} hectáreas.\n".format(str(max_pendiente)))
-        
-select = seleccion_municipios(GDB, cod_tup,ruta_salida)
-shp =  clip(select, MDT, ruta_salida)
-Reporte(shp, ruta_salida, codigos_tupla)
-arcpy.Delete_management([select,shp])
+
+
+select = seleccion_municipios(gdb, cod_tup,ruta_salida)
+Reporte(select, ruta_salida, codigos_tupla)
