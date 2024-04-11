@@ -1,3 +1,21 @@
+# Seleccionar por atributos uno o mas municipios saber cuantas imagenes municipios
+# sacar prom area imagenes
+# sumar todas las areas y factor 70%
+# ese num multiplar prom imagenes y factor
+# saber cuanto se paga
+
+# reporte
+
+# cuantas imagenes netas caben y ya, poner dinamico el factor de traslap
+
+
+# no tiene resolucion con la que se rija 
+
+# sacar el area total de area de las imagenes, sacar overlap 70%
+# sacar promedio de todas las imagenes 
+
+# #dentro de las bases hay un campo nubes y sombras, al calculo tener en cuenta nubes y sombras, si se tienen en cuenta se resta al área efectiva del proyecto, poner boton
+
 import arcpy
 from arcpy.sa import *
 import os
@@ -27,6 +45,16 @@ def seleccion_municipios(gdb, codigos_tupla, ruta_salida):
     temp = arcpy.management.CopyFeatures (select, os.path.join(ruta_salida, "Mun.shp"))
     return temp      
              
+
+#Funcion para Seleccionar municipios ------------------------------------------------------
+def seleccion_municipios(gdb, codigos_tupla, ruta_salida):
+    arcpy.AddMessage("Procesando municipios")
+    arcpy.env.workspace = gdb
+    query_prueba = "MpCodigo IN {}".format(codigos_tupla)
+    select = arcpy.SelectLayerByAttribute_management('Munpio', "NEW_SELECTION", query_prueba)
+    temp = arcpy.management.CopyFeatures (select, os.path.join(ruta_salida, "Mun.shp"))
+    return temp      
+             
 #Funcion para clasificar pendientes ------------------------------------------------------
 def clip(temp, MDT, ruta_salida):
     arcpy.AddMessage("Iniciando Clasificación")
@@ -41,6 +69,7 @@ def clip(temp, MDT, ruta_salida):
     OutReclass.save(os.path.join(ruta_salida, "MDT_Reclass.tif"))
     arcpy.AddMessage("Clasificación Exitosa")
     shp = arcpy.conversion.RasterToPolygon(OutReclass, os.path.join(ruta_salida, "MDT_Shape.shp"), "NO_SIMPLIFY", "VALUE", "MULTIPLE_OUTER_PART")
+    arcpy.Delete_management([OutReclass,slope,clip_raster])
     return shp
 
 #Funcion para generar reporte ------------------------------------------------------
@@ -94,8 +123,8 @@ def Reporte(shp, ruta_salida, codigos_tupla):
             archivo.write("La mayor pendiente es 20-35 % ------ {0} hectáreas.\n".format(str(max_pendiente)))
         elif max_pendiente == Pendiente4:
             archivo.write("La mayor pendiente es >35 % ------ {0} hectáreas.\n".format(str(max_pendiente)))
-
-
+        
 select = seleccion_municipios(gdb, cod_tup,ruta_salida)
 shp =  clip(select, MDT, ruta_salida)
 Reporte(shp, ruta_salida, codigos_tupla)
+arcpy.Delete_management([select,shp])
