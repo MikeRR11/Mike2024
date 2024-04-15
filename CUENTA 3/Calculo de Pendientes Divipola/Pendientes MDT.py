@@ -5,13 +5,10 @@ import os
 arcpy.env.overwriteOutput = True
 #Llamar municipios y MDT
 
-# gdb = r"\\172.26.0.20\Elite_Sub_Geografia_Cartografia\Coberturas\GDB_FLET_Agosto_2023.gdb"
-# MDT = r"\\172.26.0.20\Elite_Sub_Geografia_Cartografia\MD\Proyectos\SRTM30_Origen_Unico\srtm_30_extend.img"
-
 codigos = arcpy.GetParameter(0)
-gdb = arcpy.GetParameterAsText(1)
-MDT = arcpy.GetParameterAsText(2)
-ruta_salida = arcpy.GetParameterAsText(3)
+gdb = r"\\172.26.0.20\Elite_Sub_Geografia_Cartografia\Coberturas\GDB_FLET_Agosto_2023.gdb"
+MDT = r"\\172.26.0.20\Elite_Sub_Geografia_Cartografia\MD\Proyectos\SRTM30_Origen_Unico\srtm_30_extend.img"
+ruta_salida = arcpy.GetParameterAsText(1)
 codigos_2 = []
 for cod in codigos:
     codigos_2.append(cod)
@@ -41,6 +38,7 @@ def clip(temp, MDT, ruta_salida):
     OutReclass.save(os.path.join(ruta_salida, "MDT_Reclass.tif"))
     arcpy.AddMessage("Clasificación Exitosa")
     shp = arcpy.conversion.RasterToPolygon(OutReclass, os.path.join(ruta_salida, "MDT_Shape.shp"), "NO_SIMPLIFY", "VALUE", "MULTIPLE_OUTER_PART")
+    arcpy.Delete_management([OutReclass,slope,clip_raster])
     return shp
 
 #Funcion para generar reporte ------------------------------------------------------
@@ -94,8 +92,8 @@ def Reporte(shp, ruta_salida, codigos_tupla):
             archivo.write("La mayor pendiente es 20-35 % ------ {0} hectáreas.\n".format(str(max_pendiente)))
         elif max_pendiente == Pendiente4:
             archivo.write("La mayor pendiente es >35 % ------ {0} hectáreas.\n".format(str(max_pendiente)))
-
-
+        
 select = seleccion_municipios(gdb, cod_tup,ruta_salida)
 shp =  clip(select, MDT, ruta_salida)
 Reporte(shp, ruta_salida, codigos_tupla)
+arcpy.Delete_management([select,shp])
