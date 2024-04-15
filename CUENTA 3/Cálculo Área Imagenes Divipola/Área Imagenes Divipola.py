@@ -27,10 +27,10 @@ arcpy.env.overwriteOutput = True
 # gdb = r"\\172.26.0.20\Elite_Sub_Geografia_Cartografia\Coberturas\GDB_FLET_Agosto_2023.gdb"
 
 codigos = arcpy.GetParameter(0) #Ingreso codigos Divipola
-gdb = arcpy.GetParameterAsText(1) #Ruta Elite municipios
-ORTO = arcpy.GetParameterAsText(2) #Imagenes de Entrada
-ruta_salida = arcpy.GetParameterAsText(3) # Ruta Salida
-Nubes = arcpy.GetParameterAsText(4) #Incluir Nubes
+gdb = r"C:\Users\michael.rojas\Documents\CUENTA3\PENDIENTESMDT\Municipios_Agosto_2023.gdb\Limites_Entidades_Territoriales\Munpio" 
+ORTO = arcpy.GetParameterAsText(1) #Imagenes de Entrada
+ruta_salida = arcpy.GetParameterAsText(2) # Ruta Salida
+Nubes = arcpy.GetParameterAsText(3) #Incluir Nubes
 
 codigos_2 = []
 for cod in codigos:
@@ -45,7 +45,8 @@ def seleccion_municipios(gdb, codigos_tupla, ruta_salida, ORTO):
     query_prueba = "MpCodigo IN {}".format(codigos_tupla)
     select = arcpy.SelectLayerByAttribute_management('Munpio', "NEW_SELECTION", query_prueba)
     temp = arcpy.management.CopyFeatures (select, os.path.join(ruta_salida, "Mun.shp"))
-    intersect = arcpy.analysis.Intersect([ORTO, temp],os.path.join(str(ruta_salida),'Imagenes_DIvipola.shp'),'ALL','','POINT')
+    arcpy.management.SelectLayerByLocation(ORTO, "INTERSECT", temp)
+    intersect = arcpy.management.CopyFeatures(ORTO, os.path.join(str(ruta_salida),'Imagenes_Divipola.shp'))
     return intersect
              
 
@@ -107,5 +108,5 @@ def Reporte(shp, ruta_salida, codigos_tupla):
             archivo.write("La mayor pendiente es >35 % ------ {0} hectáreas.\n".format(str(max_pendiente)))
 
 
-select = seleccion_municipios(gdb, cod_tup,ruta_salida)
+select = seleccion_municipios(gdb, cod_tup,ruta_salida,ORTO)
 Reporte(select, ruta_salida, codigos_tupla)
