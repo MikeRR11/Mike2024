@@ -1,4 +1,6 @@
-# 
+#Dirección de Gestión de Información Geográfica 
+#Grupo de desarrollo IGAC
+#Elaboró / Modifico: Michael Rojas
 import arcpy
 from arcpy.sa import *
 import os
@@ -9,7 +11,7 @@ arcpy.env.overwriteOutput = True
 # gdb = r"\\172.26.0.20\Elite_Sub_Geografia_Cartografia\Coberturas\GDB_FLET_Agosto_2023.gdb"
 
 codigos = arcpy.GetParameter(0) #Ingreso codigos Divipola
-gdb = r"C:\Users\michael.rojas\Documents\CUENTA3\PENDIENTESMDT\Municipios_Agosto_2023.gdb\Limites_Entidades_Territoriales\Munpio" 
+gdb = r"\\172.26.0.20\Elite_Sub_Geografia_Cartografia\Coberturas\GDB_FLET_Agosto_2023.gdb"
 ORTO = arcpy.GetParameterAsText(1) #Imagenes de Entrada
 ruta_salida = arcpy.GetParameterAsText(2) # Ruta Salida
 Factor = arcpy.GetParameterAsText(3) #Incluir factor
