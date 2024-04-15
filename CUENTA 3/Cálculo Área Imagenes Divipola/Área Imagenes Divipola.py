@@ -12,13 +12,14 @@ arcpy.env.overwriteOutput = True
 # gdb = r"\\172.26.0.20\Elite_Sub_Geografia_Cartografia\Coberturas\GDB_FLET_Agosto_2023.gdb"
 gdb = r"C:\Users\michael.rojas\Documents\CUENTA3\PENDIENTESMDT\Municipios_Agosto_2023.gdb\Limites_Entidades_Territoriales\Munpio"
 
-codigos = arcpy.GetParameter(0) #Ingreso codigos Divipola
-ORTO = arcpy.GetParameterAsText(1) #Imagenes de Entrada
-Limite = arcpy.GetParameterAsText(2) #Límite del proyecto
-ruta_salida = arcpy.GetParameterAsText(3) # Ruta Salida
-Factor = arcpy.GetParameterAsText(4) #Incluir factor
-Nubes = arcpy.GetParameterAsText(5) #Incluir Nubes
-Lim = arcpy.GetParameterAsText(6) #Usar límite del proyecto
+Limite = arcpy.GetParameterAsText(0) #Límite del proyecto
+Lim = arcpy.GetParameterAsText(1) #Usar límite del proyecto
+codigos = arcpy.GetParameter(2) #Ingreso codigos Divipola
+ORTO = arcpy.GetParameterAsText(3) #Imagenes de Entrada
+ruta_salida = arcpy.GetParameterAsText(4) # Ruta Salida
+Factor = arcpy.GetParameterAsText(5) #Incluir factor
+Nubes = arcpy.GetParameterAsText(6) #Incluir Nubes
+
 
 
 codigos_2 = []
