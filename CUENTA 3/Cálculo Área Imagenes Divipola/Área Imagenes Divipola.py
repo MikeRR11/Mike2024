@@ -193,7 +193,15 @@ def Reporte(shp, ruta_salida, codigos_tupla, ORTO, Limite, Lim, area_munpi):
                 nimagenes = math.ceil(area_lim/afactor)
                 archivo.write("CANTIDAD DE IMÁGENES PROMEDIO EN LOS MUNICIPIOS = " + str(nimagenes) +"\n")
 
-select = seleccion_municipios(gdb, cod_tup,ruta_salida,ORTO, Limite, Lim)
-Reporte(select['intersect'], ruta_salida, codigos_tupla, ORTO, Limite, Lim, select['area_munpi'])
-arcpy.Delete_management(select['intersect'])
-arcpy.AddMessage("Reporte generado con éxito")
+try:
+    select = seleccion_municipios(gdb, cod_tup,ruta_salida,ORTO, Limite, Lim)
+    Reporte(select['intersect'], ruta_salida, codigos_tupla, ORTO, Limite, Lim, select['area_munpi'])
+    arcpy.Delete_management(select['intersect'])
+    arcpy.AddMessage("Reporte generado con éxito")
+except arcpy.ExecuteError:
+    # Captura los errores específicos de arcpy
+    arcpy.AddMessage(arcpy.GetMessages(2))  # Obtiene los mensajes de error con severidad 2
+    arcpy.AddMessage("VERIFICAR PARAMETROS")
+except Exception as e:
+    # Captura otros errores de Python
+    arcpy.AddMessage("Otro error:", e)
