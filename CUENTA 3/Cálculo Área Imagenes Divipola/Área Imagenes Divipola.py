@@ -40,14 +40,15 @@ def Reporte(shp, ruta_salida, codigos_tupla, ORTO):
     arcpy.AddMessage("Iniciando Reporte")
     espacios = "    "
     ruta_reporte = os.path.join(ruta_salida, 'Reporte de Áreas Evaluación de Imágenes.txt')
-    desc = arcpy.Describe(ORTO) 
+    desc = arcpy.Describe(ORTO)
+    gdb_ruta = desc.path
+    gdb_nombre = os.path.basename(gdb_ruta)  # Obtener solo el nombre de la GDB
+    
     #Encabezado
     with open(ruta_reporte, "w") as archivo:
-        
-        
         archivo.write("REPORTE DE ÁREAS IMGÁGENES DIVIPOLA\n")
         archivo.write("-----------------------------------------------------\n")
-        archivo.write("Ruta:" + str(desc.catalogPath)+"\n")
+        archivo.write("NOMBRE: " + gdb_nombre + "\n")
         archivo.write("Código Divipola de los Municipios Analizados {}\n".format(codigos_tupla))
         
         total_area = 0
