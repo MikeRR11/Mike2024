@@ -31,7 +31,6 @@ gdb = r"C:\Users\michael.rojas\Documents\CUENTA3\PENDIENTESMDT\Municipios_Agosto
 ORTO = arcpy.GetParameterAsText(1) #Imagenes de Entrada
 ruta_salida = arcpy.GetParameterAsText(2) # Ruta Salida
 Nubes = arcpy.GetParameterAsText(3) #Incluir Nubes
-
 codigos_2 = []
 for cod in codigos:
     codigos_2.append(cod)
@@ -47,7 +46,6 @@ def seleccion_municipios(gdb, codigos_tupla, ruta_salida, ORTO):
     temp = arcpy.management.CopyFeatures (select, os.path.join(ruta_salida, "Mun.shp"))
     arcpy.management.SelectLayerByLocation(ORTO, "INTERSECT", temp)
     intersect = arcpy.management.CopyFeatures(ORTO, os.path.join(str(ruta_salida),'Imagenes_Divipola.shp'))
-    arcpy.Delete_management(temp)
     return intersect
              
 
@@ -62,20 +60,21 @@ def Reporte(shp, ruta_salida, codigos_tupla):
         archivo.write("-----------------------------------------------------\n")
         archivo.write("Código Divipola de los Municipios Analizados {}\n".format(codigos_tupla))
         archivo.write("\n")
-        archivo.write("COBERTURA\t\t\tÁREA\t\t  PORCENTAJE\n")
+        archivo.write("COBERTURA\tÁREA\t\tPORCENTAJE\n")
         
         # Calcula el área efectiva total de todas las entidades en la capa
+
         total_area = 0
-        SQL1 = "Cobertura' <> 2"
-        if Nubes == True:
+        if Nubes == "true":
+            SQL1 = "Cobertura <> '2'"
             with arcpy.da.SearchCursor(shp, ["SHAPE@AREA"],SQL1) as cursor:
                 for row in cursor:
                         total_area = row[0] + total_area
+
         else:
             with arcpy.da.SearchCursor(shp, ["SHAPE@AREA"]) as cursor:
                 for row in cursor:
                         total_area = row[0] + total_area
-                        
         total_area = round((total_area/10000), 2)
         
         with arcpy.da.SearchCursor(shp, ["COBERTURA", "SHAPE@AREA"]) as cursor:
@@ -85,28 +84,34 @@ def Reporte(shp, ruta_salida, codigos_tupla):
             area4 = 0
             area5 = 0
             for row in cursor:
-                if row[0] == 1:
-                    area1 = area1 + round((row[1]/10000), 2)
+                if row[0] == "1":
+                    area1 = round(area1 + (row[1]/10000), 2)
                     Porcentaje1 = round((area1/total_area)*100, 2)
-                    archivo.write("HUELLA\t" + espacios + str(area1) + " Hectáreas\t" + espacios + str(Porcentaje1) + " %\n")
-                elif row[0] == 2:
-                    area2 = area2 + round((row[1]/10000), 2)
+                elif row[0] == "2":
+                    area2 = round(area2 + (row[1]/10000), 2)
                     Porcentaje2 = round((area2/total_area)*100, 2)
-                    archivo.write("NUBE\t" + espacios + str(area2) + " Hectáreas\t" + espacios + str(Porcentaje2) + " %\n")
-                elif row[0] == 3:
-                    area3 = area3 + round((row[1]/10000), 2)
+                elif row[0] == "3":
+                    area3 = round(area3 + (row[1]/10000), 2)
                     Porcentaje3 = round((area2/total_area)*100, 2)
-                    archivo.write("SOMBRA\t" + espacios + str(area3) + " Hectáreas\t" + espacios + str(Porcentaje3) + " %\n")
-                elif row[0] == 4:
-                    area4 = area4 + round((row[1]/10000), 2)
+                elif row[0] == "4":
+                    area4 = round(area4 + (row[1]/10000), 2)
                     Porcentaje4 = round((area4/total_area)*100, 2)
-                    archivo.write("SIN DATO\t" + espacios + str(area4) + " Hectáreas\t" + espacios + str(Porcentaje4) + " %\n")
-                elif row[0] == 5:
-                    area5 = area5 + round((row[1]/10000), 2)
+                elif row[0] == "5":
+                    area5 = round(area5 + (row[1]/10000), 2)
                     Porcentaje5 = round((area5/total_area)*100, 2)
-                    archivo.write("BRUMA\t" + espacios + str(area5) + " Hectáreas\t" + espacios + str(Porcentaje5) + " %\n")
-                
+        try:
+            archivo.write("HUELLA\t" + espacios + str(area1) + " Hectáreas\t" + espacios + str(Porcentaje1) + " %\n")
+            archivo.write("NUBE\t" + espacios + str(area2) + " Hectáreas\t" + espacios + str(Porcentaje2) + " %\n")
+            archivo.write("SOMBRA\t" + espacios + str(area3) + " Hectáreas\t" + espacios + str(Porcentaje3) + " %\n")
+            archivo.write("SIN DATO\t" + espacios + str(area4) + " Hectáreas\t" + espacios + str(Porcentaje4) + " %\n")
+            archivo.write("BRUMA\t" + espacios + str(area5) + " Hectáreas\t" + espacios + str(Porcentaje5) + " %\n")
+        except:
+            pass
+        archivo.write(" %\n")
+        archivo.write("ÁREA TOTAL EFECTIVA = " + str(total_area)+ " HECTÁREAS"+" %\n")
+        arcpy.AddMessage(total_area)
+
 
 select = seleccion_municipios(gdb, cod_tup,ruta_salida,ORTO)
 Reporte(select, ruta_salida, codigos_tupla)
-arcpy.Delete_management(select)
+arcpy.AddMessage("Reporte generado con éxito")
