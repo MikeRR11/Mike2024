@@ -15,6 +15,7 @@ ruta_salida = arcpy.GetParameterAsText(2) # Ruta Salida
 Factor = arcpy.GetParameterAsText(3) #Incluir factor
 Nubes = arcpy.GetParameterAsText(4) #Incluir Nubes
 
+
 codigos_2 = []
 for cod in codigos:
     codigos_2.append(cod)
@@ -35,18 +36,19 @@ def seleccion_municipios(gdb, codigos_tupla, ruta_salida, ORTO):
              
 
 #Funcion para generar reporte ------------------------------------------------------
-def Reporte(shp, ruta_salida, codigos_tupla):
+def Reporte(shp, ruta_salida, codigos_tupla, ORTO):
     arcpy.AddMessage("Iniciando Reporte")
     espacios = "    "
-    ruta_reporte = os.path.join(ruta_salida, 'Reporte de Área de Pendientes.txt')
+    ruta_reporte = os.path.join(ruta_salida, 'Reporte de Áreas Evaluación de Imágenes.txt')
+    desc = arcpy.Describe(ORTO) 
     #Encabezado
     with open(ruta_reporte, "w") as archivo:
         
         
         archivo.write("REPORTE DE ÁREAS IMGÁGENES DIVIPOLA\n")
         archivo.write("-----------------------------------------------------\n")
+        archivo.write("Ruta:" + str(desc.catalogPath)+"\n")
         archivo.write("Código Divipola de los Municipios Analizados {}\n".format(codigos_tupla))
-        
         
         total_area = 0
         with arcpy.da.SearchCursor(shp, ["SHAPE@AREA"]) as cursor:
@@ -121,27 +123,27 @@ def Reporte(shp, ruta_salida, codigos_tupla):
             # sacar prom area imagenes
             n = str(arcpy.management.GetCount(shp))
             prom = round(total_area1/float(n),2)
-            archivo.write("ÁREA PROMEDIO IMAGENES = " + str(prom)+ " HECTÁREAS"+"\n")
+            archivo.write("ÁREA PROMEDIO IMÁGENES = " + str(prom)+ " HECTÁREAS"+"\n")
             #Factor usuario pórcentage
             afactor = round((total_area1*(float(Factor)/100)),2)
             archivo.write("ÁREA NETA TOTAL AL " + str(Factor) + " % = "  + str(afactor)+ " HECTÁREAS"+"\n")
             #Cantidad de imagenes
             nimagenes = round(afactor/prom,2)
-            archivo.write("CANTIDAD DE IMAGENES PROMEDIO " + str(nimagenes) +"\n")
+            archivo.write("CANTIDAD DE IMÁGENES PROMEDIO " + str(nimagenes) +"\n")
         else:
             archivo.write("ÁREA TOTAL EFECTIVA = " + str(total_area)+ " HECTÁREAS"+"\n")
             # sacar prom area imagenes
             n = str(arcpy.management.GetCount(shp))
             prom = round(total_area/float(n),2)
-            archivo.write("ÁREA PROMEDIO IMAGENES = " + str(prom)+ " HECTÁREAS"+"\n")
+            archivo.write("ÁREA PROMEDIO IMÁGENES = " + str(prom)+ " HECTÁREAS"+"\n")
             #Factor usuario pórcentage
             afactor = round((total_area*(float(Factor)/100)),2)
             archivo.write("ÁREA NETA TOTAL AL " + str(Factor) + " % = "  + str(afactor)+ " HECTÁREAS"+"\n")
             #Cantidad de imagenes
             nimagenes = round(afactor/prom,2)
-            archivo.write("CANTIDAD DE IMAGENES PROMEDIO " + str(nimagenes) +"\n")
+            archivo.write("CANTIDAD DE IMÁGENES PROMEDIO " + str(nimagenes) +"\n")
 
 select = seleccion_municipios(gdb, cod_tup,ruta_salida,ORTO)
-Reporte(select, ruta_salida, codigos_tupla)
+Reporte(select, ruta_salida, codigos_tupla, ORTO)
 arcpy.Delete_management([select])
 arcpy.AddMessage("Reporte generado con éxito")
