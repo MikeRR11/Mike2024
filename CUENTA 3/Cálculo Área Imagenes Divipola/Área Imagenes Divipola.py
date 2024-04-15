@@ -47,6 +47,7 @@ def seleccion_municipios(gdb, codigos_tupla, ruta_salida, ORTO):
     temp = arcpy.management.CopyFeatures (select, os.path.join(ruta_salida, "Mun.shp"))
     arcpy.management.SelectLayerByLocation(ORTO, "INTERSECT", temp)
     intersect = arcpy.management.CopyFeatures(ORTO, os.path.join(str(ruta_salida),'Imagenes_Divipola.shp'))
+    arcpy.Delete_management(temp)
     return intersect
              
 
@@ -57,56 +58,55 @@ def Reporte(shp, ruta_salida, codigos_tupla):
     ruta_reporte = os.path.join(ruta_salida, 'Reporte de Área de Pendientes.txt')
     #Encabezado
     with open(ruta_reporte, "w") as archivo:
-        archivo.write("REPORTE DE ÁREAS DE PENDIENTES\n")
+        archivo.write("REPORTE DE ÁREAS IMGÁGENES DIVIPOLA\n")
         archivo.write("-----------------------------------------------------\n")
         archivo.write("Código Divipola de los Municipios Analizados {}\n".format(codigos_tupla))
         archivo.write("\n")
-        archivo.write("PENDIENTE\t\t\tÁREA\t\t  PORCENTAJE\n")
+        archivo.write("COBERTURA\t\t\tÁREA\t\t  PORCENTAJE\n")
         
         # Calcula el área efectiva total de todas las entidades en la capa
         total_area = 0
-        with arcpy.da.SearchCursor(shp, ["SHAPE@AREA"]) as cursor:
-            for row in cursor:
-                if Nubes == True:
-                    total_area = row[0] + total_area
-                    
-                else:
-                    total_area = row[0] + total_area
-
+        SQL1 = "Cobertura' <> 2"
+        if Nubes == True:
+            with arcpy.da.SearchCursor(shp, ["SHAPE@AREA"],SQL1) as cursor:
+                for row in cursor:
+                        total_area = row[0] + total_area
+        else:
+            with arcpy.da.SearchCursor(shp, ["SHAPE@AREA"]) as cursor:
+                for row in cursor:
+                        total_area = row[0] + total_area
+                        
         total_area = round((total_area/10000), 2)
-
-        with arcpy.da.SearchCursor(shp, ["gridcode", "SHAPE@AREA"]) as cursor:
+        
+        with arcpy.da.SearchCursor(shp, ["COBERTURA", "SHAPE@AREA"]) as cursor:
+            area1 = 0
+            area2 = 0
+            area3 = 0
+            area4 = 0
+            area5 = 0
             for row in cursor:
                 if row[0] == 1:
-                    Pendiente1 = round((row[1]/10000), 2)
-                    Porcentaje1 = round((Pendiente1/total_area)*100, 2)
-                    archivo.write("Pendiente 0-10 %\t" + espacios + str(Pendiente1) + " Hectáreas\t" + espacios + str(Porcentaje1) + " %\n")
+                    area1 = area1 + round((row[1]/10000), 2)
+                    Porcentaje1 = round((area1/total_area)*100, 2)
+                    archivo.write("HUELLA\t" + espacios + str(area1) + " Hectáreas\t" + espacios + str(Porcentaje1) + " %\n")
                 elif row[0] == 2:
-                    Pendiente2 = round((row[1]/10000), 2)
-                    Porcentaje2 = round((Pendiente2/total_area)*100, 2)
-                    archivo.write("Pendiente 10-20 %\t" + espacios + str(Pendiente2) + " Hectáreas\t" + espacios + str(Porcentaje2) + " %\n")
+                    area2 = area2 + round((row[1]/10000), 2)
+                    Porcentaje2 = round((area2/total_area)*100, 2)
+                    archivo.write("NUBE\t" + espacios + str(area2) + " Hectáreas\t" + espacios + str(Porcentaje2) + " %\n")
                 elif row[0] == 3:
-                    Pendiente3 = round((row[1]/10000), 2)
-                    Porcentaje3 = round((Pendiente3/total_area)*100, 2)
-                    archivo.write("Pendiente 20-35 %\t" + espacios + str(Pendiente3) + " Hectáreas\t" + espacios + str(Porcentaje3) + " %\n")
+                    area3 = area3 + round((row[1]/10000), 2)
+                    Porcentaje3 = round((area2/total_area)*100, 2)
+                    archivo.write("SOMBRA\t" + espacios + str(area3) + " Hectáreas\t" + espacios + str(Porcentaje3) + " %\n")
                 elif row[0] == 4:
-                    Pendiente4 = round((row[1]/10000), 2)
-                    Porcentaje4 = round((Pendiente4/total_area)*100, 2)
-                    archivo.write("Pendiente >35 %\t\t" + espacios + str(Pendiente4) + " Hectáreas\t" + espacios + str(Porcentaje4) + " %\n")
+                    area4 = area4 + round((row[1]/10000), 2)
+                    Porcentaje4 = round((area4/total_area)*100, 2)
+                    archivo.write("SIN DATO\t" + espacios + str(area4) + " Hectáreas\t" + espacios + str(Porcentaje4) + " %\n")
+                elif row[0] == 5:
+                    area5 = area5 + round((row[1]/10000), 2)
+                    Porcentaje5 = round((area5/total_area)*100, 2)
+                    archivo.write("BRUMA\t" + espacios + str(area5) + " Hectáreas\t" + espacios + str(Porcentaje5) + " %\n")
                 
-        # Encuentra el máximo de las variables Pendiente
-        max_pendiente = max(Pendiente1, Pendiente2, Pendiente3, Pendiente4)
-        archivo.write("\n")
-        # Encuentra cuál variable es la mayor
-        if max_pendiente == Pendiente1:
-            archivo.write("La mayor pendiente es 0-10 % ------ {0} hectáreas.\n".format(str(max_pendiente)))
-        elif max_pendiente == Pendiente2:
-            archivo.write("La mayor pendiente es 10-20 % ------ {0} hectáreas.\n".format(str(max_pendiente)))
-        elif max_pendiente == Pendiente3:
-            archivo.write("La mayor pendiente es 20-35 % ------ {0} hectáreas.\n".format(str(max_pendiente)))
-        elif max_pendiente == Pendiente4:
-            archivo.write("La mayor pendiente es >35 % ------ {0} hectáreas.\n".format(str(max_pendiente)))
-
 
 select = seleccion_municipios(gdb, cod_tup,ruta_salida,ORTO)
 Reporte(select, ruta_salida, codigos_tupla)
+arcpy.Delete_management(select)
