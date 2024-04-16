@@ -201,7 +201,7 @@ try:
 except arcpy.ExecuteError:
     # Captura los errores específicos de arcpy
     arcpy.AddMessage(arcpy.GetMessages(2))  # Obtiene los mensajes de error con severidad 2
-    arcpy.AddMessage("VERIFICAR PARAMETROS")
+    arcpy.AddMessage("-------------VERIFICAR PARAMETROS-------------")
 except Exception as e:
     # Captura otros errores de Python
     arcpy.AddMessage("Otro error:", e)
