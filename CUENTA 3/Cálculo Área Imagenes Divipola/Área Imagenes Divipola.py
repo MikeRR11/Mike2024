@@ -10,7 +10,7 @@ arcpy.env.overwriteOutput = True
 #Llamar municipios elite
 
 # gdb = r"\\172.26.0.20\Elite_Sub_Geografia_Cartografia\Coberturas\GDB_FLET_Agosto_2023.gdb"
-gdb = r"C:\Users\michael.rojas\Documents\CUENTA3\PENDIENTESMDT\Municipios_Agosto_2023.gdb\Limites_Entidades_Territoriales\Munpio"
+gdb = r"\\172.26.0.20\Elite_Sub_Geografia_Cartografia\Coberturas\GDB_FLET_Agosto_2023.gdb"
 
 Limite = arcpy.GetParameterAsText(0) #Límite del proyecto
 Lim = arcpy.GetParameterAsText(1) #Usar límite del proyecto
@@ -59,7 +59,7 @@ def seleccion_municipios(gdb, codigos_tupla, ruta_salida, ORTO, Limite,Lim):
 def Reporte(shp, ruta_salida, codigos_tupla, ORTO, Limite, Lim, area_munpi):
     arcpy.AddMessage("Iniciando Reporte")
     espacios = "    "
-    ruta_reporte = os.path.join(ruta_salida, 'Reporte de Áreas Evaluación de Imágenes.txt')
+    ruta_reporte = os.path.join(ruta_salida, 'Reporte de Evaluación de Imágenes.txt')
     with open(ruta_reporte, "w") as archivo:
         #Encabezado
         archivo.write("REPORTE DE ÁREAS IMGÁGENES DIVIPOLA\n")
