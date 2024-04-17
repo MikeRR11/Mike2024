@@ -20,29 +20,25 @@ ruta_salida = arcpy.GetParameterAsText(2)
 arcpy.env.overwriteOutput = True
 def RMSE (validacion, fotocontrol, ruta_salida):
     
-    file = open(os.path.join(str(ruta_salida),'Report_RMSE.txt'), "w")
+    file = open(os.path.join(str(ruta_salida),'Reporte_RMSE ' + str(arcpy.Describe(fotocontrol).Name) + ".txt"), "w")
     #variables de entorno
     arrow = "=============================================="
     espacio= '	'
     
     arcpy.AddXY_management(validacion)
     arcpy.AddXY_management(fotocontrol)
-
-    Vali_2 = arcpy.management.CopyFeatures (validacion, os.path.join(ruta_salida, "ly_1_temp.shp"))
-    Foto_2 = arcpy.management.CopyFeatures (fotocontrol, os.path.join(ruta_salida, "ly_2_temp.shp"))
+    Vali_2 = arcpy.MakeFeatureLayer_management(validacion, os.path.join(str(ruta_salida),'ly_1_temp.shp'))
+    Foto_2 = arcpy.MakeFeatureLayer_management(fotocontrol, os.path.join(str(ruta_salida),'ly_2_temp.shp'))
     
-    inFeatures = Vali_2
-    inField = "Id"
-    joinTable = Foto_2
-    joinField = "FID"
-    fieldList = ["POINT_X", "POINT_Y"]
-
-    join = arcpy.management.JoinField(inFeatures, inField, joinTable, joinField, fieldList)
-    
+    join = arcpy.SpatialJoin_analysis(Vali_2,Foto_2, os.path.join(str(ruta_salida),'Spatial_join.shp'),
+                                      'JOIN_ONE_TO_ONE', 'KEEP_ALL','','CLOSEST', '1000 Meters','')
     arcpy.AddField_management(join, 'x_rmse', 'double')
     arcpy.AddField_management(join, 'y_rmse', 'double')
     arcpy.CalculateField_management(join, 'x_rmse', '(!POINT_X!-!POINT_X_1!)**(2)','PYTHON3')
     arcpy.CalculateField_management(join, 'y_rmse', '(!POINT_Y!-!POINT_Y_1!)**(2)','PYTHON3')
+    
+    arcpy.Delete_management(Foto_2)
+    arcpy.Delete_management(Vali_2)
     
 
     with arcpy.da.SearchCursor(join, ['FID','POINT_X','POINT_Y','x_rmse','y_rmse']) as cursor:
