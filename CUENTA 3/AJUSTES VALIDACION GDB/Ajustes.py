@@ -25,6 +25,7 @@ puntos_extraidos =  arcpy.GetParameterAsText(5)
 puntos_manuales_generados =  arcpy.GetParameterAsText(6)
 ruta_salida_reporte =  arcpy.GetParameterAsText(7)
 escala_rmse = arcpy.GetParameterAsText(8)
+
 def SelectRandomByCount(layer,count,salidapuntos):
         layerCount = int(arcpy.GetCount_management(layer).getOutput(0))
         if layerCount < count:
@@ -50,15 +51,19 @@ def vectores(gdb, escala, ruta_salida):
     #Se crean puntos a partir de los vertices de entrada 
     vertices_vectores = os.path.join(ruta_salida, 'temp.shp')
 
-    arcpy.AddMessage("Hay Suficientes Puntos del FC: TSPblu")
+    arcpy.AddMessage("Hay Suficientes Puntos del FC" + str(gdb_name))
     arcpy.management.FeatureVerticesToPoints(gdb, vertices_vectores,'ALL')
     arcpy.management.AddField(vertices_vectores, 'FC_Origen','TEXT')
-    arcpy.management.CalculateField(vertices_vectores, 'FC_Origen',"{0}".format(str(gdb)), 'PYTHON3')
+    arcpy.management.CalculateField(vertices_vectores, 'FC_Origen',"'{0}'".format(gdb_name), 'PYTHON3')
 
     vertices_rand = os.path.join(ruta_salida, 'Puntos_Revisar.shp')
     
     try:
         SelectRandomByCount(vertices_vectores,20,vertices_rand)
+    except arcpy.ExecuteError:
+        arcpy.AddMessage("Error: Existen menos de 20 puntos para la asignación")
+    except Exception as e:
+        arcpy.AddMessage(f"Error Inesperado: {e}")
     
     arcpy.management.Delete(vertices_vectores)
     return
