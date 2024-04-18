@@ -50,35 +50,16 @@ def vectores(gdb, escala, ruta_salida):
     #Se crean puntos a partir de los vertices de entrada 
     vertices_vectores = os.path.join(ruta_salida, 'temp.shp')
 
-    if escala == '1:1000' or escala == '1:2000' :
-        if int(str(arcpy.management.GetCount(r'InfraestructuraServicios\TSPubl'))) >20:
-            arcpy.AddMessage("Hay Suficientes Puntos del FC: TSPblu")
-            arcpy.management.FeatureVerticesToPoints(r'InfraestructuraServicios\TSPubl', vertices_vectores,'ALL')
-            arcpy.management.AddField(vertices_vectores, 'FC_Origen','TEXT')
-            arcpy.management.CalculateField(vertices_vectores, 'FC_Origen',"'TSPubl'", 'PYTHON3')
-        elif int(str(arcpy.management.GetCount(r'InfraestructuraServicios\PDistr'))) >20:
-            arcpy.AddMessage("Hay Suficientes Puntos del FC:PDistr") 
-            arcpy.management.FeatureVerticesToPoints(r'InfraestructuraServicios\PDistr', vertices_vectores,'ALL')
-            arcpy.management.AddField(vertices_vectores, 'FC_Origen','TEXT')
-            arcpy.management.CalculateField(vertices_vectores, 'FC_Origen',"'PDistr'", 'PYTHON3')
-        else:
-            arcpy.management.FeatureVerticesToPoints(r'Transporte\LVia', vertices_vectores,'ALL')
-            arcpy.AddMessage("Hay Suficientes Puntos del FC: LVia") 
-            arcpy.management.AddField(vertices_vectores, 'FC_Origen','TEXT')
-            arcpy.management.CalculateField(vertices_vectores, 'FC_Origen',"'LVia'", 'PYTHON3')
-    else:
-        if int(str(arcpy.management.GetCount(r'ViviendaCiudadTerritorio\Constr_P'))) >20: 
-            arcpy.AddMessage("Hay Suficientes Puntos del FC: Constr_P")  
-            arcpy.management.FeatureVerticesToPoints(r'ViviendaCiudadTerritorio\Constr_P', vertices_vectores,'ALL')
-            arcpy.management.AddField(vertices_vectores, 'FC_Origen','TEXT')
-            arcpy.management.CalculateField(vertices_vectores, 'FC_Origen',"'Constr_P'", 'PYTHON3')
-        else:
-            arcpy.AddMessage("Hay Suficientes Puntos del FC: Via")  
-            arcpy.management.FeatureVerticesToPoints(r'Transporte\Via', vertices_vectores,'ALL')
-            arcpy.management.AddField(vertices_vectores, 'FC_Origen','TEXT')
-            arcpy.management.CalculateField(vertices_vectores, 'FC_Origen',"'Via'", 'PYTHON3') 
+    arcpy.AddMessage("Hay Suficientes Puntos del FC: TSPblu")
+    arcpy.management.FeatureVerticesToPoints(gdb, vertices_vectores,'ALL')
+    arcpy.management.AddField(vertices_vectores, 'FC_Origen','TEXT')
+    arcpy.management.CalculateField(vertices_vectores, 'FC_Origen',"{0}".format(str(gdb)), 'PYTHON3')
+
     vertices_rand = os.path.join(ruta_salida, 'Puntos_Revisar.shp')
-    SelectRandomByCount(vertices_vectores,20,vertices_rand)
+    
+    try:
+        SelectRandomByCount(vertices_vectores,20,vertices_rand)
+    
     arcpy.management.Delete(vertices_vectores)
     return
 
