@@ -4,7 +4,7 @@
 # Created on: 2023-06-14
 # Created by: Kelly Villamil - Diego Rugeles (Supervisor Desarrollo DGIG)
 # Actualizado en: 2024-04-16
-# Actualizado por: Michael Rojas - Diego Rugeles (Supervisor Desarrollo DGIG)
+# Actualizado por: Michael Andres Rojas - Diego Rugeles (Supervisor Desarrollo DGIG)
 # # Usage: Migracion de Dataset Superficies de Agua a GDB v.2.5
 # Description:
 # ---------------------------------------------------------------------------
