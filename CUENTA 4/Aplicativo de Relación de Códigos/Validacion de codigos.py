@@ -13,24 +13,31 @@ arcpy.AddMessage("INICIANDO PROCESO")
 
 arcpy.env.workspace = GDB
 
-
+#Reparar geom pa todo
 def codigo(fc, field):
-    try:
+    # try:
+        # Iniciar una sesión de edición
+        edit = arcpy.da.Editor(arcpy.env.workspace)
+        edit.startEditing(False, True)
+        edit.startOperation()
+
         with arcpy.da.SearchCursor(fc,['SHAPE@','OBJECTID',field]) as sCur:
             for geometria1 in sCur:
                 with arcpy.da.UpdateCursor("NombresGeograficos\\NGeogr",['SHAPE@','OBJECTID','NGIORelaci']) as uCur:
                     for geometria2 in uCur:
-                        if geometria1[0].contains(geometria2) == True and geometria2[1] != None:
-                            arcpy.AddMessage(f"FEATURE CLASS:" + fc)
+                        if geometria1[0].contains(geometria2[0]) == True and geometria2[1] != None:
+                            arcpy.AddMessage("FEATURE CLASS:" + fc)
                             geometria2[2] = geometria1[1]
                             uCur.updateRow(geometria2) 
-                            # Imprimir el OBJECTID y el valor del campo de los elementos insertados
-                            arcpy.AddMessage(f"Insertando: OBJECTID: {geometria1[1]}, Valor del campo {field}: {geometria1[3]}")  
-    except:
-        
-        arcpy.AddError("Verificar estructura de datos: No se encuentra el Fearure Class " + fc)
-        arcpy.GetMessages()
+                            arcpy.AddMessage("Insertando: OBJECTID:" + geometria1[1] + " -  Valor del campo" + field +": " + geometria1[3])  
 
+        # Finalizar la operación y la sesión de edición
+        edit.stopOperation()
+        edit.stopEditing(True)
+
+    # except Exception as e:
+    #     arcpy.AddError("Verificar estructura de datos: No se encuentra el Fearure Class " + fc)
+    #     arcpy.GetMessages()
 
 arcpy.AddMessage("Iniciando relación de identificadores con datos de tablas")
 # CoberturaTierra
@@ -47,32 +54,24 @@ codigo("Hidrografia/LCoste", 'LCIdentif')
 codigo("Hidrografia/Mangla", 'MgIdentif')
 # Transporte
 codigo("Transporte/Puente_L", 'PIdentif')
-codigo("Transporte/Embarc", 'Eldentifi')
+#codigo("Transporte/Embarc", 'Eldentifi')
 codigo("Transporte/Telefe", 'TelIdentif')
 codigo("Transporte/VFerre", 'VFIdentif')
 codigo("Transporte/Via", 'VIdentif')
 codigo("Transporte/Tunel", 'TIdentif')
-arcpy.AddMessage("Proceso relación de identificadores con datos de tablas finalizado")
 
-arcpy.AddMessage("-----------------------------------------------------------------------")
-def intersect(fc, field):
-    fields = ['OBJECTID', field]
-    with arcpy.da.SearchCursor(fc, fields) as cursor:
-        for row in cursor:
-            if row[1] is None or row[1] == "" or row[1] == " " or row[1] == 'None':
-                arcpy.AddMessage(fc + " Identicador_Null," + " " + "ObjectID: " + " " +  str(row[0]))
-
-arcpy.AddMessage("Iniciando relación de identificadores con relación espacial")
 # ViviendaCiudadTerritorio
-intersect("ViviendaCiudadTerritorio/Constr_P", 'CIdentif')
+codigo("ViviendaCiudadTerritorio/Constr_P", 'CIdentif')
 # Hidrografia
-intersect("Hidrografia/DAgua_P", 'DAIdentif')
+codigo("Hidrografia/DAgua_P", 'DAIdentif')
 # InfraestructuraServicios
 codigo("InfraestructuraServicios/Pozo", 'PoIdentif')
 # Transporte
 codigo("Transporte/Puente_P", 'PIdentif')
 
+arcpy.AddMessage("Proceso relación de identificadores con datos de tablas finalizado")
 
+arcpy.AddMessage("-----------------------------------------------------------------------")
 arcpy.AddMessage("PROCESO FINALIZADO")
 
 
