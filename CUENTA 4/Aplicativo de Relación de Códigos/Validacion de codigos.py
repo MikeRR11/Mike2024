@@ -2,21 +2,35 @@
 #Grupo de desarrollo IGAC
 #Elaboró / Modifico: Michael Rojas
 import arcpy
-from arcpy.sa import *
-import os
-import math
 
-GDB = arcpy.GetParameterAsText(0)
+# Parámetros de entrada
+GDB = arcpy.GetParameterAsText(0)  # Geodatabase como entrada
 
-arcpy.AddMessage("INICIANDO PROCESO")
+# try:
+#     arcpy.AddMessage("INICIANDO PROCESO")
+#     arcpy.env.workspace = GDB
 
+#     # Reparar geometría para todos los feature classes en la geodatabase
+#     datasets = arcpy.ListDatasets(feature_type='All')
+#     for ds in datasets:
+#         for fc in arcpy.ListFeatureClasses(feature_dataset=ds):
+#             arcpy.RepairGeometry_management(fc, "DELETE_NULL", "OGC")
 
-arcpy.env.workspace = GDB
+#     arcpy.AddMessage("Geometrías reparadas exitosamente.")
 
-#Reparar geom pa todo
+# except arcpy.ExecuteError:
+#     # Mostrar errores
+#     arcpy.AddError(arcpy.GetMessages(2))
+    
+# except Exception as e:
+#     # otros errores
+#     arcpy.AddError(str(e))
+    
+
 def codigo(fc, field):
     # try:
         # Iniciar una sesión de edición
+        ws = arcpy.env.workspace = GDB
         edit = arcpy.da.Editor(arcpy.env.workspace)
         edit.startEditing(False, True)
         edit.startOperation()
@@ -25,11 +39,12 @@ def codigo(fc, field):
             for geometria1 in sCur:
                 with arcpy.da.UpdateCursor("NombresGeograficos\\NGeogr",['SHAPE@','OBJECTID','NGIORelaci']) as uCur:
                     for geometria2 in uCur:
-                        if geometria1[0].contains(geometria2[0]) == True and geometria2[1] != None:
+                        if geometria1[0].contains(geometria2[0]) == True and geometria2[2] != None:
                             arcpy.AddMessage("FEATURE CLASS:" + fc)
-                            geometria2[2] = geometria1[1]
+                            geometria2[2] = geometria1[2]
                             uCur.updateRow(geometria2) 
-                            arcpy.AddMessage("Insertando: OBJECTID:" + geometria1[1] + " -  Valor del campo" + field +": " + geometria1[3])  
+                            arcpy.AddMessage("Insertando: OBJECTID:" + str(geometria1[1]) + " -  Valor del campo" + field +": " + str(geometria1[2]))  
+
 
         # Finalizar la operación y la sesión de edición
         edit.stopOperation()
@@ -40,10 +55,13 @@ def codigo(fc, field):
     #     arcpy.GetMessages()
 
 arcpy.AddMessage("Iniciando relación de identificadores con datos de tablas")
-# CoberturaTierra
-codigo("CoberturaTierra/AExtra", 'AEIdentif')
+
 # ViviendaCiudadTerritorio
 codigo("ViviendaCiudadTerritorio/ZDura", 'ZDIdentif')
+
+# CoberturaTierra
+codigo("CoberturaTierra/AExtra", 'AEIdentif')
+
 # Hidrografia
 codigo("Hidrografia/DAgua_L", 'DAIdentif')
 codigo("Hidrografia/DAgua_R", 'DAIdentif')
