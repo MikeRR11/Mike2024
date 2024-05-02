@@ -41,10 +41,10 @@ def codigo(fc, field):
                 with arcpy.da.UpdateCursor("NombresGeograficos\\NGeogr",['SHAPE@','OBJECTID','NGIORelaci']) as uCur:
                     for geometria2 in uCur:
                         if geometria1[0].contains(geometria2[0]) == True and geometria1[2] != None:
-                            arcpy.AddMessage("FEATURE CLASS:" + fc)
+                            arcpy.AddMessage("FEATURE CLASS: " + fc)
                             geometria2[2] = geometria1[2]
                             uCur.updateRow(geometria2) 
-                            arcpy.AddMessage("Insertando: OBJECTID:" + str(geometria1[1]) + " -  Valor del campo" + field +": " + str(geometria1[2]))  
+                            arcpy.AddMessage("Insertando: OBJECTID: " + str(geometria1[1]) + " -  Valor del campo" + field +": " + str(geometria1[2]))  
 
         # Finalizar la operación y la sesión de edición
         edit.stopOperation()
@@ -65,10 +65,10 @@ def drenajeR(fc, field):
                 with arcpy.da.UpdateCursor("NombresGeograficos\\NGeogr",['SHAPE@','OBJECTID','NGIORelaci']) as uCur:
                     for geometria2 in uCur:
                         if geometria1[3] == 2 and geometria1[0].contains(geometria2[0]) == True and geometria1[2] != None:
-                            arcpy.AddMessage("FEATURE CLASS:" + fc)
+                            arcpy.AddMessage("FEATURE CLASS: " + fc)
                             geometria2[2] = geometria1[2]
                             uCur.updateRow(geometria2) 
-                            arcpy.AddMessage("Insertando: OBJECTID:" + str(geometria1[1]) + " -  Valor del campo" + field +": " + str(geometria1[2]))  
+                            arcpy.AddMessage("Insertando: OBJECTID: " + str(geometria1[1]) + " -  Valor del campo" + field +": " + str(geometria1[2]))  
 
         # Finalizar la operación y la sesión de edición
         edit.stopOperation()
