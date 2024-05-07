@@ -40,8 +40,6 @@ with arcpy.da.SearchCursor(Puntos, ["SHAPE@","ORIG_FID"]) as Scursor:
         count = arcpy.GetCount_management(Selectp)
         # Convierte el recuento a un valor entero
         count_int = int(count.getOutput(0))
-        arcpy.AddMessage(str(punto[1]))
-
         # Si hay más de una vía intersectando con el punto, insertar el punto en la nueva capa
         if count_int > 1:
             with arcpy.da.InsertCursor(ruta_nueva_capa, ["SHAPE@"]) as Icursor: 
