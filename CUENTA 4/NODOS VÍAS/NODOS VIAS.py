@@ -25,7 +25,7 @@ arcpy.Delete_management(PInicioFin)
 
 #3 HACER SELECCION DINAMICA DE PUNTOS CON MAS DE UN REGISTRO DE VÍA Y EXPORTAR PUNTOS A UN NUEVO FEATURE
 # Definir la ruta de salida para la nueva capa de puntos
-ruta_nueva_capa = os.path.join(Ruta_Salida, "Puntos_Validar.shp")
+ruta_nueva_capa = os.path.join(Ruta_Salida, "Puntos_Validar_Vias.shp")
 
 # Crear la nueva capa de puntos
 arcpy.CreateFeatureclass_management(os.path.dirname(ruta_nueva_capa), os.path.basename(ruta_nueva_capa), "POINT", spatial_reference=Puntos)
@@ -46,7 +46,8 @@ with arcpy.da.SearchCursor(Puntos, ["SHAPE@","ORIG_FID"]) as Scursor:
                 Icursor.insertRow([punto[0]])
 
 # Imprimir un mensaje con el número de puntos insertados
-arcpy.AddMessage(f"Se han insertado {arcpy.GetCount_management(ruta_nueva_capa)} puntos con más de una vía sin conectar")
+arcpy.AddMessage(f"Se han detectado {arcpy.GetCount_management(ruta_nueva_capa)} puntos con más de una vía sin conectar")
 
 # Finalizar con un mensaje de éxito
 arcpy.AddMessage("PROCESO FINALIZADO CON ÉXITO.")
+arcpy.Delete_management(Puntos)
