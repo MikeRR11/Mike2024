@@ -22,6 +22,9 @@ campo_nombre = "NGNPrincip"  # Cambiar según el nombre del campo en tus dataset
 # Crear un buffer alrededor de Puntos1
 Buffer = arcpy.Buffer_analysis(Puntos1, os.path.join(str(Ruta_Salida), "Buffer.shp"), Buffer_Dist)
 
-arcpy.SpatialJoin_analysis(Puntos2, buffers, puntos_cercanos, "JOIN_ONE_TO_MANY", "KEEP_COMMON")
+#Hacer un join espacial para unir ambas tablas en un radio de busqueda
+
+fc = arcpy.SpatialJoin_analysis(Puntos1, Puntos2, os.path.join(str(Ruta_Salida)), "temp.shp", "JOIN_ONE_TO_MANY", "KEEP_ALL", match_option = "INTERSECT", search_radius = Buffer_Dist)
+
 
 
