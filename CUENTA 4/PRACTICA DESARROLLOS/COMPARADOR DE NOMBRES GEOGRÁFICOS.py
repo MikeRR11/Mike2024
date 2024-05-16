@@ -24,7 +24,20 @@ Buffer = arcpy.Buffer_analysis(Puntos1, os.path.join(str(Ruta_Salida), "Buffer.s
 
 #Hacer un join espacial para unir ambas tablas en un radio de busqueda
 
-fc = arcpy.SpatialJoin_analysis(Puntos1, Puntos2, os.path.join(str(Ruta_Salida)), "temp.shp", "JOIN_ONE_TO_MANY", "KEEP_ALL", match_option = "INTERSECT", search_radius = Buffer_Dist)
+arcpy.analysis.SpatialJoin(
+    target_features=Puntos1,
+    join_features=Puntos2,
+    out_feature_class= os.path.join(Ruta_Salida, "temp.shp"),
+    join_operation="JOIN_ONE_TO_MANY",
+    join_type="KEEP_ALL", #Mantener todos los campos de ambas capas
+    field_mapping=None,  # Usar los campos por defecto
+    match_option="INTERSECT",
+    search_radius=Buffer_Dist,
+    distance_field_name=None,
+    match_fields=None
+)
+
+arcpy.AddMessage("Unión espacial completada. Resultados guardados")
 
 
 
