@@ -12,6 +12,8 @@ Buffer = arcpy.GetParameterAsText(2)
 arcpy.env.overwriteOutput = True
 arcpy.env.workspace = Feature
 arcpy.AddMessage("INICIANDO PROCESO")
+arcpy.AddMessage(f"Validando feature class {os.path.basename(Feature)} con distancia de busqueda de {Buffer} metros")
+
 
 #1 HACER CAPA DE PUNTOS DE DANGLES. INICIO Y FINAL
 Dangles = arcpy.FeatureVerticesToPoints_management(Feature,os.path.join(str(Ruta_Salida),'Dangles.shp'), "DANGLE")
@@ -25,7 +27,7 @@ arcpy.Delete_management(PInicioFin)
 
 #3 HACER SELECCION DINAMICA DE PUNTOS CON MAS DE UN REGISTRO DE VÍA Y EXPORTAR PUNTOS A UN NUEVO FEATURE
 # Definir la ruta de salida para la nueva capa de puntos
-ruta_nueva_capa = os.path.join(Ruta_Salida, "Puntos_Validar_Feature.shp")
+ruta_nueva_capa = os.path.join(Ruta_Salida, "Puntos_Desconexion_"+ str(os.path.basename(Feature))+".shp")
 
 # Crear la nueva capa de puntos
 arcpy.CreateFeatureclass_management(os.path.dirname(ruta_nueva_capa), os.path.basename(ruta_nueva_capa), "POINT", spatial_reference=Puntos)
@@ -46,8 +48,9 @@ with arcpy.da.SearchCursor(Puntos, ["SHAPE@","ORIG_FID"]) as Scursor:
                 Icursor.insertRow([punto[0]])
 
 # Imprimir un mensaje con el número de puntos insertados
-arcpy.AddMessage(f"Se han detectado {arcpy.GetCount_management(ruta_nueva_capa)} puntos con más de una vía sin conectar")
+arcpy.AddMessage(f"Se han detectado {arcpy.GetCount_management(ruta_nueva_capa)} puntos desconectados en el feature class {os.path.basename(Feature)}")
 
 # Finalizar con un mensaje de éxito
 arcpy.AddMessage("PROCESO FINALIZADO CON ÉXITO.")
 arcpy.Delete_management(Puntos)
+#LITSO
