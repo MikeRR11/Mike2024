@@ -1,6 +1,7 @@
 #Dirección de Gestión de Información Geográfica 
 #Grupo de desarrollo IGAC
-#Elaboró / Modifico: Diego Rugeles - Michael Rojas
+#Elaboró / Modifico: Michael Andres Rojas
+
 import arcpy
 import os
 
