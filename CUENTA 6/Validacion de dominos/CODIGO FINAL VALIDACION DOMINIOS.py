@@ -254,9 +254,9 @@ def validarDominio(fc_path, fc_name, file):
                 (row[1] == 6 and row[3] != '0') or \
                 (row[1] == 6 and row[4] != '0') or \
                 (row[1] == 7 and row[5] != 7 and row[5] is not None) or \
-                (row[1] == 7 and row[2] not in ['1','3']) or \
+                (row[1] == 7 and row[2] not in ['0']) or \
                 (row[1] == 7 and row[3] != '0') or \
-                (row[1] == 7 and row[4] != '1'):
+                (row[1] == 7 and row[4] != '0'):
                     file.write(f"{fc_name} VTipo - VEstado - VCarril - VAcceso - RuleID, ObjectID: {row[0]}\n")
                     errores_contador += 1
 
