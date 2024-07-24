@@ -84,7 +84,7 @@ if mapSeries.enabled:
             aprx.updateConnectionProperties(gdb_original, nuevo_origen_datos)
 
     # Exporta la primera página de la serie de mapas al formato PDF con una resolución de 300 DPI
-    layout.exportToPDF(ruta_salida, resolution=300)
+    layout.exportToPDF(ruta_salida, resolution=300, image_quality="BEST", georef_info=False)
     print(f"Exportado: {ruta_salida}")
 else:
     print('La serie de mapas no está habilitada.')
