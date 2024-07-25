@@ -1,10 +1,11 @@
 import arcpy
 import os
 
-# Obtiene los parámetros de entrada del usuario
+
 nuevo_origen_datos = arcpy.GetParameterAsText(0)
 Munpi = arcpy.GetParameterAsText(1)
 ruta_salida_carpeta = arcpy.GetParameterAsText(2)
+Export = arcpy.GetParameterAsText(3)
 
 # Obtiene el nombre base de la GDB variable y le agrega la extensión .pdf
 nombre_pdf = os.path.splitext(os.path.basename(nuevo_origen_datos))[0] + ".pdf"
@@ -29,18 +30,27 @@ rutas_capas_fijas = [
     r'\CapasNacionales\Bathymetry',
     r'\CapasNacionales\Invias_Dptamental',
     r'\CapasNacionales\INVIAS'
+    
 ]
+
+# Variables predefinidas
+#nuevo_origen_datos = r"C:\Users\michael.rojas\Documents\c5\PLANTILLAS CARTA\DATOS\GDB MUNICIPIOS\20045_Becerrill.gdb"
+
+#ruta_salida = r"C:\Users\michael.rojas\Documents\c5\PLANTILLAS CARTA\DATOS\GDB MUNICIPIOS\MapSeriesExport.pdf"
 
 # Añade mensajes informativos
 arcpy.AddMessage("=== Inicio del proceso de exportación de mapas ===\n")
 arcpy.AddMessage(f"GDB variable: {nuevo_origen_datos}")
-arcpy.AddMessage(f"Página de la serie de mapas: {Munpi}")
+arcpy.AddMessage(f"Pagina del Map Series: {Munpi}")
 arcpy.AddMessage(f"Ruta de salida: {ruta_salida}\n")
 arcpy.AddMessage("=================================================\n")
-
 # Verifica que la GDB variable proporcionada por el usuario exista
 if not os.path.exists(nuevo_origen_datos):
     raise FileNotFoundError(f"La GDB variable proporcionada no existe en la ruta: {nuevo_origen_datos}")
+
+# Define la ruta de salida para el archivo PDF
+if not ruta_salida.lower().endswith('.pdf'):
+    ruta_salida = ruta_salida + '.pdf'
 
 # Verifica que la carpeta de salida para el PDF exista
 if not os.path.isdir(os.path.dirname(ruta_salida)):
@@ -49,7 +59,7 @@ if not os.path.isdir(os.path.dirname(ruta_salida)):
 # Obtiene el proyecto de ArcGIS Pro actualmente abierto
 aprx = arcpy.mp.ArcGISProject('CURRENT')
 
-# Obtiene el primer layout con el nombre "CARTO_PLIEGO_MUNICIPIOS"
+# Obtiene el primer layout con el nombre "Layout"
 layout = aprx.listLayouts("CARTO_PLIEGO_MUNICIPIOS")[0]
 
 # Obtiene el primer mapa con el nombre "Vector"
@@ -57,6 +67,12 @@ aprxMap = aprx.listMaps("Vector")[0]
 
 # Obtiene todas las capas del mapa
 layers = aprxMap.listLayers()
+
+# Obtiene el primer elemento de marco de mapa llamado "Map Frame Vector" en el layout
+mf = layout.listElements('MAPFRAME_ELEMENT', 'Map Frame')[0]
+
+# Obtiene la serie de mapas del layout
+mapSeries = layout.mapSeries
 
 # Separa las capas en fijas y variables basándose en las rutas relativas de las capas fijas
 capas_fijas = []
@@ -68,6 +84,7 @@ for layer in layers:
             capas_fijas.append(layer)  # Capa fija, no se actualiza
         else:
             capas_variables.append(layer)  # Capa variable, se actualizará
+
 
 # Verifica si la serie de mapas está habilitada
 if mapSeries.enabled:
@@ -88,10 +105,14 @@ if mapSeries.enabled:
             arcpy.AddMessage(f"Actualizando origen de datos para la capa variable: {layer.name} - {origen_datos_original} -> {nuevo_origen_datos}")
             aprx.updateConnectionProperties(gdb_original, nuevo_origen_datos)
 
-    # Exporta la página de la serie de mapas al formato PDF plano con una resolución de 300 DPI
-    arcpy.AddMessage("Exportando a PDF plano...\n")
-    layout.exportToPDF(ruta_salida, resolution=300, image_quality="BEST", georef_info=False)
-    arcpy.AddMessage(f"Exportación completada: {ruta_salida}")
+    
+    if Export == "true":
+        # Exporta la página de la serie de mapas al formato PDF con una resolución de 300 DPI
+        arcpy.AddMessage("Exportando a PDF...\n")
+        layout.exportToPDF(ruta_salida, resolution=300, image_quality="BEST", georef_info=False)
+        arcpy.AddMessage(f"Exportación completada: {ruta_salida}")
+    else:
+        pass
 else:
     arcpy.AddWarning('La serie de mapas no está habilitada.')
 
