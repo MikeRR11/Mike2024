@@ -29,7 +29,7 @@ def create_raster_with_w_shape(filename, extent, resolution, w_shape_params):
     width = int((east - west) / pixel_width)
     height = int((north - south) / pixel_height)
     
-    arcpy.AddMessage(f"Creating raster with dimensions: {width} x {height}")
+    arcpy.AddMessage(f"Creando Raster...")
 
     data = np.zeros((height, width), dtype=float)
     x = np.linspace(west, east, width)
@@ -49,7 +49,7 @@ def create_raster_with_w_shape(filename, extent, resolution, w_shape_params):
     arcpy.CopyRaster_management(temp_raster, filename)
     arcpy.Delete_management(temp_raster)
 
-    arcpy.AddMessage(f"Raster created and saved to: {filename}")
+    arcpy.AddMessage(f"Raster creado...")
     return filename  # Devolver el nombre del archivo guardado
 
 # Parámetros
@@ -65,7 +65,7 @@ create_raster_with_w_shape(raster_filename, extent, resolution, w_shape_params)
 
 # Proyección
 sr_colombia = arcpy.SpatialReference(3116)  # EPSG:3116
-arcpy.AddMessage("Starting raster projection...")
+arcpy.AddMessage("Proyectando Raster...")
 Raster_P = arcpy.ProjectRaster_management(raster_filename, os.path.join(Ruta_Salida, "w_shape_raster_projected.tif"), sr_colombia)
 arcpy.AddMessage("Raster proyectado y guardado")
 arcpy.Delete_management(raster_filename)
@@ -73,18 +73,14 @@ arcpy.Delete_management(raster_filename)
 # Recorte del Raster
 arcpy.AddMessage("Recortando Raster...")
 Raster_Col = arcpy.Clip_management(Raster_P, "#", os.path.join(Ruta_Salida, "Raster_Col.tif"), shp, "#", "ClippingGeometry")
-arcpy.AddMessage(f"Raster recortado y guardado en: {Raster_Col}")
+arcpy.AddMessage(f"Raster recortado y guardado")
 arcpy.Delete_management(Raster_P)
 
 
+#Resample
+cell_size = 90
+in_raster = Raster_Col
 
-
-
-
-
-
-
-
-
-
-
+Raster_F= arcpy.management.Resample(in_raster, os.path.join(Ruta_Salida, "Raster_Final.tif"), cell_size, "BILINEAR")
+arcpy.Delete_management(Raster_Col)
+arcpy.AddMessage(f"Raster final en: {Raster_F}")
