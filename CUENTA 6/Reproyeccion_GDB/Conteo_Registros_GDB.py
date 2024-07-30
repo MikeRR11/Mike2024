@@ -1,14 +1,16 @@
 import arcpy
 import os
+
 arcpy.env.overwriteOutput = True
 
 inGDB = arcpy.GetParameterAsText(0)  
 xml = arcpy.GetParameterAsText(1)
 outXML = arcpy.GetParameterAsText(2)
 
-
-
 def contar_registros(inGDB, outXML):
+
+    arcpy.AddMessage(f"Contando registros de: {inGDB}")
+    arcpy.AddMessage(f"--------------------------------------------------------")
     arcpy.env.workspace = inGDB
     
     # Listar todos los datasets en la geodatabase
@@ -40,7 +42,9 @@ def contar_registros(inGDB, outXML):
         arcpy.AddMessage(f"Total de registros en el dataset {dataset}: {total_por_dataset}")
 
     # Imprimir el total de registros en la geodatabase
+    
     arcpy.AddMessage(f"Total de registros en la geodatabase: {total_registros}")
+    arcpy.AddMessage(f"--------------------------------------------------------")
     
     # Imprimir los resultados detallados
     for dataset, fc_dict in resultados.items():
@@ -48,11 +52,11 @@ def contar_registros(inGDB, outXML):
         for fc, count in fc_dict.items():
             arcpy.AddMessage(f"  Clase de entidad: {fc} - Número de registros: {count}")
     
-    
-    if xml == "true":
+    if xml.lower() == "true":
         # Exportar la geodatabase a un archivo XML
+        arcpy.AddMessage(f"--------------------------------------------------------")
         arcpy.AddMessage(f"Exportando esquema GDB")
-        arcpy.conversion.ExportXMLWorkspaceDocument(
+        arcpy.management.ExportXMLWorkspaceDocument(
             in_data=inGDB,
             out_file=outXML,
             export_type="DATA",  # Opción para exportar datos
@@ -60,9 +64,7 @@ def contar_registros(inGDB, outXML):
             export_metadata=False  # No exportar metadata
         )
         arcpy.AddMessage(f"Archivo XML exportado a: {outXML}")
-    else:
-        pass
-
+    
     return resultados
 
 resultados = contar_registros(inGDB, outXML)
