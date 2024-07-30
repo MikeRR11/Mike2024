@@ -9,6 +9,7 @@ outXML = arcpy.GetParameterAsText(2)
 repair = arcpy.GetParameterAsText(3)
 
 def repair_geometry(feature_classes):
+    arcpy.AddMessage(f"Reparando geometria en: {inGDB}")
     for fc in feature_classes:
         try:
             # Extraer nombre del dataset y del feature class
