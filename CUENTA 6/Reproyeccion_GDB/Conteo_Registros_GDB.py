@@ -15,11 +15,14 @@ def repair_geometry(feature_classes):
             dataset_name = os.path.basename(os.path.dirname(fc))
             fc_name = os.path.basename(fc)
 
-            # Mensaje de reparación de geometría
+            # Reparar geometría
             arcpy.management.RepairGeometry(fc, delete_null=True, validation_method='OGC')
             arcpy.AddMessage(f"Geometría reparada para: {dataset_name} / {fc_name}")
         except arcpy.ExecuteError:
-            arcpy.AddError(f"Error al reparar geometría para {fc_name} en dataset {dataset_name}")
+            # Capturar y mostrar el mensaje de error detallado
+            error_message = arcpy.GetMessages()
+            arcpy.AddError(f"Error al reparar geometría para {fc_name} en dataset {dataset_name}: {error_message}")
+
 
 
 def contar_registros(inGDB):
@@ -49,6 +52,8 @@ def contar_registros(inGDB):
                 total_por_dataset += count  # Sumar al total por dataset
             except arcpy.ExecuteError:
                 arcpy.AddError(f"Error al contar registros para {fc} en {dataset}")
+                error_message = arcpy.GetMessages()
+                arcpy.AddError(f" {error_message}")
 
         # Añadir el total por dataset al total general
         total_registros += total_por_dataset
@@ -57,7 +62,7 @@ def contar_registros(inGDB):
 
     # Imprimir el total de registros en la geodatabase
     arcpy.AddMessage(f"Total de registros en la geodatabase: {total_registros}")
-
+    arcpy.AddMessage("#########################################################")
     # Imprimir los resultados detallados
     for dataset, fc_dict in resultados.items():
         arcpy.AddMessage(f"Dataset: {dataset}")
