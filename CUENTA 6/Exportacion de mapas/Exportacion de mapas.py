@@ -15,7 +15,9 @@ rutas_capas_fijas = [
     r'\CapasNacionales\ResguardoIndigenaFormalizado',
     r'\CapasNacionales\ZonificacionLey2Sept2023',
     r'\CapasNacionales\ZonasReservaCampesina',
-    r'\CapasNacionales\Bathymetry'
+    r'\CapasNacionales\Bathymetry',
+    r'\CapasNacionales\Invias_Dptamental',
+    r'\CapasNacionales\INVIAS'
 ]
 
 # Variables predefinidas

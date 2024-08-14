@@ -30,8 +30,10 @@ rutas_capas_fijas = [
     r'\CapasNacionales\Bathymetry',
     r'\CapasNacionales\Invias_Dptamental',
     r'\CapasNacionales\INVIAS'
-    
 ]
+
+
+
 
 # Variables predefinidas
 #nuevo_origen_datos = r"C:\Users\michael.rojas\Documents\c5\PLANTILLAS CARTA\DATOS\GDB MUNICIPIOS\20045_Becerrill.gdb"
