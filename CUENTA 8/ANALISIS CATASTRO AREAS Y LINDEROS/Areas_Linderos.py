@@ -3,8 +3,8 @@ import os
 
 # Obtener las rutas de la GDB y la carpeta de salida desde las entradas del usuario
 shapefile = arcpy.GetParameterAsText(0)
-xlx = arcpy.GetParameterAsText(1)  # Tipo "file"
-Ruta_Salida = arcpy.GetParameterAsText(2)
+excel_path = arcpy.GetParameterAsText(1)  # Tipo "file"
+output_folder = arcpy.GetParameterAsText(2)
 zona = arcpy.GetParameterAsText(3)
 
 # Habilitar la sobrescritura de salidas existentes
@@ -12,52 +12,93 @@ arcpy.env.overwriteOutput = True
 
 arcpy.AddMessage("INICIANDO PROCESO ...............")
 arcpy.AddMessage("  ")
-arcpy.AddMessage(f"Cálculando parámetros para zona {zona}.")
+arcpy.AddMessage(f"Calculando parámetros para zona {zona}.")
 
 # 1. Crear copia del shapefile original
-nombre_salida = f"Tolerancia_{os.path.basename(shapefile)[:10]}.shp"
-ruta_salida = os.path.join(Ruta_Salida, nombre_salida)
-shp = arcpy.management.CopyFeatures(shapefile, ruta_salida)
-arcpy.management.RepairGeometry(in_features=shp, delete_null="DELETE_NULL", validation_method="OGC")
+output_name = f"Tolerancia_{os.path.basename(shapefile)[:10]}.shp"
+output_path = os.path.join(output_folder, output_name)
+shp_copy = arcpy.management.CopyFeatures(shapefile, output_path)
+arcpy.management.RepairGeometry(in_features=shp_copy, delete_null="DELETE_NULL", validation_method="OGC")
 
-arcpy.AddMessage("Añadiendo campos...")
-# 2. Verificar que el campo 'Toler_%' no exista antes de añadirlo
-field_names = [field.name for field in arcpy.ListFields(shp)]
-if 'Toleranc_%' not in field_names:
-    arcpy.AddField_management(shp, 'Toleranc_%', 'DOUBLE')
+# 2. Convertir el archivo Excel a una tabla de ArcGIS
+arcpy.AddMessage("Convirtiendo archivo Excel a tabla...")
+excel_table = os.path.join(output_folder, "excel_table")
+dbf = arcpy.conversion.ExcelToTable(excel_path, excel_table, "Hoja1")
 
-# 3. Añadir el campo 'Tol_OK' con nombres cortos
-if 'Toleran_OK' not in field_names:
-    arcpy.AddField_management(shp, 'Toleran_OK', 'TEXT')
-
-# 4. Verificar que la hoja de Excel existe y especificar la hoja
-excel_sheet = xlx + r"\Hoja1$"  # Asegúrate de que "Hoja1" sea el nombre correcto de la hoja en tu Excel
-if not arcpy.Exists(excel_sheet):
-    arcpy.AddError("La hoja de Excel especificada no existe o no es accesible.")
-    raise arcpy.ExecuteError
-
-arcpy.AddMessage(f"Realizando JOIN de {excel_sheet}...")
-# 5. Realizar el join con la tabla de Excel
-arcpy.management.AddJoin(
-    in_layer_or_view=shp,
+# 4. Realizar el join con la tabla de Excel
+arcpy.AddMessage(f"Realizando JOIN de {excel_table}...")
+arcpy.management.JoinField(
+    in_data=shp_copy,
     in_field="CODIGO",
-    join_table=excel_sheet,
-    join_field="NUMERO_PREDIAL",
-    join_type="KEEP_ALL"
-)
+    join_table=dbf,
+    join_field="NUMERO_PRE",
+    fields=["AREATERR"])
 
-# 6. Copiar los resultados del join a un nuevo shapefile para que incluya los campos del Excel
-shapefile_final = os.path.join(Ruta_Salida, f"Resultado_{os.path.basename(shapefile)[:10]}.shp")
-arcpy.management.CopyFeatures(shp, shapefile_final)
-
+# 5. Calcular el campo de % de tolerancia (VALOR ABSOLUTO) en el shapefile final
 arcpy.AddMessage("Calculando campos...")
-# 7. Calcular el campo de % de tolerancia (VALOR ABSOLUTO) en el shapefile final
+
+# Agregar el campo Tol_P como tipo DOUBLE (puede ser FLOAT también)
+arcpy.management.AddField(in_table=shp_copy, field_name="Tol_P", field_type="DOUBLE")
+
+#Calcular campo Tol_P
 arcpy.management.CalculateField(
-    in_table=shapefile_final,
-    field="Toler_%",
-    expression="abs((!Shape_Area! - !AREATERR!) / !Shape_Area! * 100)",
+    in_table=shp_copy,
+    field="Tol_P",
+    expression="round(abs((!Shape_Area! - !AREATERR!) / !Shape_Area! * 100),3)",
     expression_type="PYTHON3"
 )
 
-# 8. Remover el join (si lo consideras necesario para limpiar la capa original)
-arcpy.management.RemoveJoin(shp)
+# Agregar el campo Tol_OK como tipo texto
+arcpy.management.AddField(in_table=shp_copy, field_name="Tol_OK", field_type="TEXT")
+
+# Definir la expresión de cálculo para el campo Tol_OK
+expression = "validar_tolerancia(!Shape_Area!, !Tol_P!)"
+
+#6. Definir si el porcentaje de tolerancia cumple o no cumple segun áreas
+if zona == 'Urbano':
+# Definir el código de la función como un bloque de texto
+    code_block = """
+    def validar_tolerancia(area, tolerancia):
+        if area <= 80:
+            max_tolerancia = 7
+        elif 80 < area <= 250:
+            max_tolerancia = 6
+        elif 250 < area <= 500:
+            max_tolerancia = 4
+        else:
+            max_tolerancia = 3
+
+        return "OK" if tolerancia <= max_tolerancia else "NO OK"
+    """
+    # Calcular el campo Tol_OK utilizando la expresión y el código de la función
+    arcpy.management.CalculateField(
+        in_table=shp_copy,
+        field="Tol_OK",
+        expression=expression,
+        expression_type="PYTHON3",
+        code_block=code_block
+        )
+else:
+    code_block = """
+    def validar_tolerancia(area, tolerancia):
+        if area <= 2000:
+            max_tolerancia = 10
+        elif 2000 < area <= 250:
+            max_tolerancia = 6
+        elif 250 < area <= 500:
+            max_tolerancia = 4
+        else:
+            max_tolerancia = 3
+
+        return "OK" if tolerancia <= max_tolerancia else "NO OK"
+    """
+    # Calcular el campo Tol_OK utilizando la expresión y el código de la función
+    arcpy.management.CalculateField(
+        in_table=shp_copy,
+        field="Tol_OK",
+        expression=expression,
+        expression_type="PYTHON3",
+        code_block=code_block
+)
+
+arcpy.AddMessage("Proceso completado.")
