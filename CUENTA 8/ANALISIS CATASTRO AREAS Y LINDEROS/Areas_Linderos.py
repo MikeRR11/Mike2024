@@ -1,3 +1,6 @@
+#Dirección de Gestión de Información Geográfica 
+#Grupo de desarrollo IGAC
+#Elaboró / Modifico: Yaritza Quevedo - Michael Andres Rojas - Diego Rugeles
 import arcpy
 import os
 
