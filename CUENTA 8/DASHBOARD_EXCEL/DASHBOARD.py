@@ -63,15 +63,20 @@ def join_excel(excel, ruta_salida, mun, cp, mun_dobles,mp_rural,pnn):
         fields_table_agro = [f.name for f in fields_agro if f.name != "OID"]
         fields_table_geo = [f.name for f in fields_geo if f.name != "OID"]
 
-
+            
+       
+        # Insertando datos en Estado_Cartografia_Rural
         arcpy.AddMessage("Insertando datos en Estado_Cartografia_Rural...")
         with arcpy.da.SearchCursor(table_excel_mun, fields_table_mun) as sCur:
             with arcpy.da.InsertCursor(os.path.join(ruta_salida, nombre_gdb, 'Estado_Cartografia_Rural'), fields_table_mun) as iCur:
                 for row in sCur:
-                    iCur.insertRow(row)
-                    arcpy.AddMessage(f"Insertado: {row}")
-        arcpy.AddMessage("Inserción de datos en Estado_Cartografia_Rural completada.")
+                    try:
+                        iCur.insertRow(row)
+                        arcpy.AddMessage(f"Insertado Parque Natural: {row}")
+                    except Exception as row_error:
+                            arcpy.AddWarning(f"Error insertando Parque Natural: {row} - {str(row_error)}")
 
+        # Insertando datos en Estado_Cartografia_Urbana
         arcpy.AddMessage("Insertando datos en Estado_Cartografia_Urbana...")
         with arcpy.da.SearchCursor(table_excel_cp, fields_table_cp) as sCur:
             with arcpy.da.InsertCursor(os.path.join(ruta_salida, nombre_gdb, 'Estado_Cartografia_Urbana'), fields_table_cp) as iCur:
@@ -80,6 +85,7 @@ def join_excel(excel, ruta_salida, mun, cp, mun_dobles,mp_rural,pnn):
                     arcpy.AddMessage(f"Insertado: {row}")
         arcpy.AddMessage("Inserción de datos en Estado_Cartografia_Urbana completada.")
 
+        # Revisando registros duplicados en Estado_Cartografia_Rural
         arcpy.AddMessage("Revisando registros duplicados en Estado_Cartografia_Rural...")
         divipola_counts = {}
         with arcpy.da.SearchCursor(os.path.join(ruta_salida, nombre_gdb, 'Estado_Cartografia_Rural'), ['DIVIPOLA']) as cursor:
@@ -92,17 +98,17 @@ def join_excel(excel, ruta_salida, mun, cp, mun_dobles,mp_rural,pnn):
         duplicados = {k for k, v in divipola_counts.items() if v > 1}
         arcpy.AddMessage(f"Encontrados {len(duplicados)} DIVIPOLA duplicados.")
 
+        # Actualizando geometrías en Estado_Cartografia_Rural
         arcpy.AddMessage("Actualizando geometrías en Estado_Cartografia_Rural...")
-        
         with arcpy.da.UpdateCursor(os.path.join(ruta_salida, nombre_gdb, 'Estado_Cartografia_Rural'), ['SHAPE@', 'DIVIPOLA', 'Ortoimagen_rural']) as uCur:
             for uRow in uCur:
                 if uRow[1] in duplicados:
                     encontrado = False
                     with arcpy.da.SearchCursor(mun_dobles, ['SHAPE@', 'MpCodigo', 'ORTO_R']) as sCur:
                         for sRow in sCur:
-                            mp_codigo_cr = sRow[1][:5]
+                            mp_codigo_cr = sRow[1]
                             #arcpy.AddMessage(f"Revisando DIVIPOLA {uRow[1]} con Ortoimagen_rural {uRow[2]}")
-                            if sRow[2] == uRow[2] and str(mp_codigo_cr) == str(uRow[1]):
+                            if str(sRow[2]) == str(uRow[2]) and str(mp_codigo_cr) == str(uRow[1]):
                                 row_list = list(uRow)
                                 row_list[0] = sRow[0].projectAs(sr)
                                 uRow = tuple(row_list)
@@ -124,6 +130,7 @@ def join_excel(excel, ruta_salida, mun, cp, mun_dobles,mp_rural,pnn):
                                 break
         arcpy.AddMessage("Actualización de geometrías en Estado_Cartografia_Rural completada.")
 
+        # Actualizando geometrías en Estado_Cartografia_Urbana
         arcpy.AddMessage("Actualizando geometrías en Estado_Cartografia_Urbana...")
         with arcpy.da.SearchCursor(cp, ['SHAPE@', 'COD_CPOB']) as sCur:
             cp_rows = [(sRow[0].projectAs(sr), sRow[1]) for sRow in sCur]
@@ -135,7 +142,10 @@ def join_excel(excel, ruta_salida, mun, cp, mun_dobles,mp_rural,pnn):
                         iCur.updateRow(iRow)
                         arcpy.AddMessage(f"Geometría actualizada: Codigo Centro Poblado {iRow[1]}")
         arcpy.AddMessage("Actualización de geometrías en Estado_Cartografia_Urbana completada.")
-# #########################################################################################################################################################
+#########################################################################################################################################################
+        
+        # Cursor Agrologia
+
         arcpy.AddMessage("Insertando datos en Estado_Agrologia...")
         with arcpy.da.SearchCursor(table_excel_agro, fields_table_agro) as sCur:
             with arcpy.da.InsertCursor(os.path.join(ruta_salida, nombre_gdb, 'Estado_Agrologia'), fields_table_agro) as iCur:
@@ -158,6 +168,9 @@ def join_excel(excel, ruta_salida, mun, cp, mun_dobles,mp_rural,pnn):
         arcpy.AddMessage("Actualización de geometrías en Estado_Agrologia completada.")
 
 #################################################################################################################################################################
+        
+        # Cursor Geografia
+
         arcpy.AddMessage("Insertando datos en Estado_Geografia...")
         with arcpy.da.SearchCursor(table_excel_geo, fields_table_geo) as sCur:
             with arcpy.da.InsertCursor(os.path.join(ruta_salida, nombre_gdb, 'Estado_Geografia'), fields_table_geo) as iCur:
@@ -180,30 +193,46 @@ def join_excel(excel, ruta_salida, mun, cp, mun_dobles,mp_rural,pnn):
         arcpy.AddMessage("Actualización de geometrías en Estado_Geografia completada.")
 
 
-#################################################################################################################################################################
+################################################################################################################################################################
 
-        arcpy.AddMessage("Insertando Datos de Parques Naturales")
-        try:
-            with arcpy.da.SearchCursor(pnn, fields_table_mun) as sCur:
-                with arcpy.da.InsertCursor(os.path.join(ruta_salida, nombre_gdb, 'Estado_Cartografia_Rural'), fields_table_mun) as iCur:
+        # Cursor PNN
+
+        listaPNN = ["SHAPE@","DIVIPOLA","Municipio","Departamento","Area_Oficial","Gestor_Catastral","Prioridad_Catastro","Anualizacion_Cartografia",
+                    "Ejecucion_Catastro","FINANCIACION","Observaciones","Metodo_Adquisicion_Imagen","Estado_Toma","Estado_Control_Terrestre","Estado_Modelo",
+                    "Estado_Rural","Fecha_Insumo_Rural","Ortoimagen_Rural","MDT_Rural","Carto_Rural","Fecha_Ortoimagen_Rural","Fecha_Carto_Rural","Area_Rural",
+                    "Porcentaje_Cobertura","Estado_General_CentrosPoblados"]
+        
+        listaCartoRural = ["SHAPE@","DIVIPOLA","Municipio","Departamento","Area_Oficial","Gestor_Catastral","Prioridad_Catastro","Anualizacion_Cartografia",
+                           "Ejecucion_Catastro","FINANCIACION","Observaciones","Metodo_Adquisicion_Imagen","Estado_Toma","Estado_Control_Terrestre","Estado_Modelo",
+                           "Estado_Rural","Fecha_Insumo_Rural","Ortoimagen_Rural","MDT_Rural","Carto_Rural","Fecha_Ortoimagen_Rural","Fecha_Carto_Rural","Area_Rural",
+                           "Porcentaje_Cobertura","Estado_General_CentrosPoblados"]
+
+        arcpy.AddMessage("Insertando Datos de Paruqes Naturales")
+        with arcpy.da.SearchCursor(pnn,listaPNN) as sCur:
+            with arcpy.da.InsertCursor(os.path.join(ruta_salida, nombre_gdb, 'Estado_Cartografia_Rural'), listaCartoRural) as iCur:
                     for row in sCur:
-                        # Asegúrate de que el campo 'Departamento' esté presente en 'fields_table_mun' y en la tabla destino.
-                        iCur.insertRow(row)
-                        arcpy.AddMessage(f"Insertado: {row}")
-            arcpy.AddMessage("Inserción de datos de Parques Naturales completada.")
-        except arcpy.ExecuteError as e:
-            arcpy.AddError(f"Error durante la operación: {e}")
-        except Exception as ex:
-            arcpy.AddError(f"Error inesperado: {ex}")
+                        try:
+                            iCur.insertRow(row)
+                            arcpy.AddMessage(f"Insertado Parque Natural: {row}")
+                        except Exception as row_error:
+                            arcpy.AddWarning(f"Error insertando Parque Natural: {row} - {str(row_error)}")
 
+        arcpy.AddMessage("Inserción de datos de Parques Naturales completada.")
 
-    except Exception as e:
-        arcpy.AddError(f"Error durante la operación: {str(e)}")
-        editor.abortOperation()      
-    editor.stopOperation()  
-    editor.stopEditing(True)  
-    arcpy.AddMessage("Proceso completado exitosamente.")  
-    #############################################################
+    except arcpy.ExecuteError as e:
+        # En caso de errores de arcpy
+        arcpy.AddError(f"Error de arcpy durante la operación: {e}")
+        editor.abortOperation()  # Abortar toda la operación si hay errores críticos
+    except Exception as ex:
+        # Otros errores no controlados
+        arcpy.AddError(f"Error inesperado: {ex}")
+        editor.abortOperation()  # Abortar en caso de errores graves
+
+    finally:
+        # Asegúrate de detener la operación de edición
+        if editor.isEditing:
+            editor.stopEditing(True)  # False para no guardar cambios si no se completó
+    
     
 def bufferDissolve(gdbOrigen, estacion, gdbMunicipios):
     # Copiar la capa de antenas a la geodatabase de salida
@@ -275,84 +304,6 @@ def bufferDissolve(gdbOrigen, estacion, gdbMunicipios):
 
     #Eliminando archivos
     arcpy.management.Delete(buffer_disuelto)
-
-
-
-
-    # arcpy.AddMessage("Iniciando proceso de buffer y disolución...")
-
-    # input_layer = estacion
-    # output_buffer_layer = os.path.join(gdbOrigen, "Buffers_Dissolve")
-    # municipios_layer = os.path.join(gdbMunicipios, "Munpio")
-
-    # arcpy.AddMessage("Creando buffers...")
-    # arcpy.analysis.Buffer(
-    #     in_features=input_layer,
-    #     out_feature_class=output_buffer_layer,
-    #     buffer_distance_or_field="buff_m",
-    #     dissolve_option="ALL"
-    # )
-    # arcpy.AddMessage("Buffers creados correctamente.")
-
-    # arcpy.AddMessage("Agregando campo areaMtr a la capa de municipios...")
-    # arcpy.AddField_management(
-    #     in_table=municipios_layer,
-    #     field_name="areaMtr",
-    #     field_type="DOUBLE"
-    # )
-    # arcpy.AddMessage("Campo areaKM agregado.")
-
-    # arcpy.AddMessage("Calculando área de los municipios en metros cuadrados...")
-    # arcpy.management.CalculateField(
-    #     in_table=municipios_layer,
-    #     field="areaMtr",
-    #     expression="!shape.area@squaremeters!",
-    #     expression_type="PYTHON3"
-    # )
-    # arcpy.AddMessage("Cálculo de área completado.")
-
-    # arcpy.AddMessage("Intersectando buffers con municipios...")
-    # output_intersect_layer = os.path.join(gdbOrigen, "Buffer_Municipio_Intersect")
-    # arcpy.analysis.Intersect(
-    #     in_features=[output_buffer_layer, municipios_layer],
-    #     out_feature_class=output_intersect_layer,
-    #     join_attributes="ALL",
-    #     output_type="INPUT"
-    # )
-    # arcpy.AddMessage("Intersección completada.")
-
-    # arcpy.AddMessage("Disolviendo la intersección por código de municipio...")
-    # output_dissolved_layer = os.path.join(gdbOrigen, "Buffer_Estaciones_Geodesicas")
-    # arcpy.management.Dissolve(
-    #     in_features=output_intersect_layer,
-    #     out_feature_class=output_dissolved_layer,
-    #     dissolve_field="MpCodigo",
-    #     statistics_fields=[("areaMtr", "FIRST"), ("MpNombre", "FIRST"), ("Depto", "FIRST")]
-    # )
-    # arcpy.AddMessage("Disolución completada.")
-
-    # arcpy.AddMessage("Agregando campo de porcentaje de cobertura...")
-    # arcpy.AddField_management(
-    #     in_table=output_dissolved_layer,
-    #     field_name="CoveragePct",
-    #     field_type="DOUBLE"
-    # )
-    # arcpy.AddMessage("Campo CoveragePct agregado.")
-
-    # arcpy.AddMessage("Calculando porcentaje de cobertura...")
-    # arcpy.management.CalculateField(
-    #     in_table=output_dissolved_layer,
-    #     field="CoveragePct",
-    #     expression="(!Shape_Area! / !FIRST_areaMtr!) * 100",
-    #     expression_type="PYTHON3"
-    # )
-    # arcpy.AddMessage("Cálculo de porcentaje de cobertura completado.")
-
-    # arcpy.AddMessage("Eliminando capas temporales...")
-    # arcpy.management.Delete(os.path.join(gdbOrigen, "Buffers_Dissolve"))
-    # arcpy.management.Delete(os.path.join(gdbOrigen, "Buffer_Municipio_Intersect"))
-    # arcpy.AddMessage("Capas temporales eliminadas. Proceso finalizado exitosamente.")
-    
 
 if __name__ == "__main__":
     excel = arcpy.GetParameterAsText(0)
