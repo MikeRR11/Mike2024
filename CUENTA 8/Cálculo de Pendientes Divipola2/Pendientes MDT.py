@@ -7,21 +7,11 @@ import arcpy
 from arcpy.sa import *
 import os
 
-arcpy.env.overwriteOutput = True
 #Llamar municipios y MDT
 codigos = arcpy.GetParameter(0)
 ruta_salida = arcpy.GetParameterAsText(1)
 zona = arcpy.GetParameterAsText(2)
-
-
-#Funcion para Seleccionar municipios ------------------------------------------------------
-def seleccion_municipios(gdb, codigos_tupla, ruta_salida, FIELD):
-    arcpy.AddMessage("Procesando municipios")
-    arcpy.env.workspace = gdb
-    query_prueba = "MpCodigo IN {}".format(codigos_tupla)
-    select = arcpy.SelectLayerByAttribute_management('Munpio', "NEW_SELECTION", query_prueba)
-    temp = arcpy.management.CopyFeatures (select, os.path.join(ruta_salida, "Mun.shp"))
-    return temp      
+arcpy.env.overwriteOutput = True
             
 #Funcion para clasificar pendientes ------------------------------------------------------
 def clip(temp, MDT, ruta_salida):
@@ -41,86 +31,116 @@ def clip(temp, MDT, ruta_salida):
     return shp
 
 #Funcion para generar reporte ------------------------------------------------------
-def Reporte(shp, ruta_salida, codigos_tupla):
+def Reporte(shp, ruta_salida, codigos_tupla, zona):
     arcpy.AddMessage("Iniciando Reporte")
-    espacios = "    "
     ruta_reporte = os.path.join(ruta_salida, 'Reporte de Área de Pendientes.txt')
+
+    # Inicializar variables de pendiente y porcentaje
+    Pendiente1 = Pendiente2 = Pendiente3 = Pendiente4 = 0
+    Porcentaje1 = Porcentaje2 = Porcentaje3 = Porcentaje4 = 0
+
     with open(ruta_reporte, "w") as archivo:
         archivo.write("REPORTE DE ÁREAS DE PENDIENTES\n")
         archivo.write("-----------------------------------------------------\n")
-        archivo.write("Código Divipola de los Municipios Analizados {}\n".format(codigos_tupla))
+        archivo.write(f"Códigos Divipola Analizados en Área {zona}: {codigos_tupla}\n")
         archivo.write("\n")
-        archivo.write("PENDIENTE\t\t\tÁREA\t\t  PORCENTAJE\n")
+        archivo.write("-----------------------------------------------------\n")
+        archivo.write("| PENDIENTE        | ÁREA (Hectáreas) | PORCENTAJE  |\n")
+        archivo.write("-----------------------------------------------------\n")
         
         # Calcula el área total de todas las entidades en la capa
         total_area = 0
         with arcpy.da.SearchCursor(shp, ["SHAPE@AREA"]) as cursor:
             for row in cursor:
-                total_area = row[0] + total_area
+                total_area += row[0]
 
-        total_area = round((total_area/10000), 2)
+        total_area = round((total_area / 10000), 2)
 
+        # Calcular áreas y porcentajes por pendiente
         with arcpy.da.SearchCursor(shp, ["gridcode", "SHAPE@AREA"]) as cursor:
             for row in cursor:
+                area = round((row[1] / 10000), 2)
                 if row[0] == 1:
-                    Pendiente1 = round((row[1]/10000), 2)
-                    Porcentaje1 = round((Pendiente1/total_area)*100, 2)
-                    archivo.write("Pendiente 0-10 %\t" + espacios + str(Pendiente1) + " Hectáreas\t" + espacios + str(Porcentaje1) + " %\n")
+                    Pendiente1 += area
                 elif row[0] == 2:
-                    Pendiente2 = round((row[1]/10000), 2)
-                    Porcentaje2 = round((Pendiente2/total_area)*100, 2)
-                    archivo.write("Pendiente 10-20 %\t" + espacios + str(Pendiente2) + " Hectáreas\t" + espacios + str(Porcentaje2) + " %\n")
+                    Pendiente2 += area
                 elif row[0] == 3:
-                    Pendiente3 = round((row[1]/10000), 2)
-                    Porcentaje3 = round((Pendiente3/total_area)*100, 2)
-                    archivo.write("Pendiente 20-35 %\t" + espacios + str(Pendiente3) + " Hectáreas\t" + espacios + str(Porcentaje3) + " %\n")
+                    Pendiente3 += area
                 elif row[0] == 4:
-                    Pendiente4 = round((row[1]/10000), 2)
-                    Porcentaje4 = round((Pendiente4/total_area)*100, 2)
-                    archivo.write("Pendiente >35 %\t\t" + espacios + str(Pendiente4) + " Hectáreas\t" + espacios + str(Porcentaje4) + " %\n")
-                
-        # Encuentra el máximo de las variables Pendiente
+                    Pendiente4 += area
+
+        if total_area > 0:
+            Porcentaje1 = round((Pendiente1 / total_area) * 100, 2)
+            Porcentaje2 = round((Pendiente2 / total_area) * 100, 2)
+            Porcentaje3 = round((Pendiente3 / total_area) * 100, 2)
+            Porcentaje4 = round((Pendiente4 / total_area) * 100, 2)
+
+        # Escribir los valores en el archivo con formato
+        archivo.write("| 0 - 10 %         | {:>10}         | {:>7} % |\n".format(Pendiente1, Porcentaje1))
+        archivo.write("| 10 - 20 %        | {:>10}         | {:>7} % |\n".format(Pendiente2, Porcentaje2))
+        archivo.write("| 20 - 35 %        | {:>10}         | {:>7} % |\n".format(Pendiente3, Porcentaje3))
+        archivo.write("| > 35 %           | {:>10}         | {:>7} % |\n".format(Pendiente4, Porcentaje4))
+        archivo.write("-----------------------------------------------------\n")
+        
+        # Encuentra la mayor pendiente
         max_pendiente = max(Pendiente1, Pendiente2, Pendiente3, Pendiente4)
         archivo.write("\n")
-        # Encuentra cuál variable es la mayor
         if max_pendiente == Pendiente1:
-            archivo.write("La mayor pendiente es 0-10 % ------ {0} hectáreas.\n".format(str(max_pendiente)))
+            archivo.write("La mayor área de pendiente corresponde a: 0 - 10 % ({0} hectáreas)\n".format(max_pendiente))
         elif max_pendiente == Pendiente2:
-            archivo.write("La mayor pendiente es 10-20 % ------ {0} hectáreas.\n".format(str(max_pendiente)))
+            archivo.write("La mayor área de pendiente corresponde a: 10 - 20 % ({0} hectáreas)\n".format(max_pendiente))
         elif max_pendiente == Pendiente3:
-            archivo.write("La mayor pendiente es 20-35 % ------ {0} hectáreas.\n".format(str(max_pendiente)))
+            archivo.write("La mayor área de pendiente corresponde a: 20 - 35 % ({0} hectáreas)\n".format(max_pendiente))
         elif max_pendiente == Pendiente4:
-            archivo.write("La mayor pendiente es >35 % ------ {0} hectáreas.\n".format(str(max_pendiente)))
+            archivo.write("La mayor área de pendiente corresponde a: > 35 % ({0} hectáreas)\n".format(max_pendiente))
+
+
 
 if zona == "Rural":
 
     gdb = r"\\172.26.0.20\Elite_Sub_Geografia_Cartografia\Coberturas\GDB_FLET_Agosto_2023.gdb"
     MDT = r"\\172.26.0.20\Elite_Sub_Geografia_Cartografia\MD\Proyectos\SRTM30_Origen_Unico\srtm_30_extend.img"
-    FIELD = "MpCodigo"
 
     codigos_2 = []
     for cod in codigos:
         codigos_2.append(cod)
     cod_tup = tuple(codigos_2)
     codigos_tupla = tuple(codigos)
+
+            #Funcion para Seleccionar municipios ------------------------------------------------------
+    def seleccion_municipios(gdb, codigos_tupla, ruta_salida):
+        arcpy.AddMessage("Procesando municipios")
+        arcpy.env.workspace = gdb
+        query_prueba = "MpCodigo IN {}".format(codigos_tupla)
+        select = arcpy.SelectLayerByAttribute_management('Munpio', "NEW_SELECTION", query_prueba)
+        temp = arcpy.management.CopyFeatures (select, os.path.join(ruta_salida, "Mun.shp"))
+        return temp     
             
-    select = seleccion_municipios(gdb, cod_tup,ruta_salida, FIELD)
+    select = seleccion_municipios(gdb, cod_tup,ruta_salida)
     shp =  clip(select, MDT, ruta_salida)
-    Reporte(shp, ruta_salida, codigos_tupla)
+    Reporte(shp, ruta_salida, codigos_tupla, zona)
     arcpy.Delete_management([select,shp])
 else:
     
-    gdb = r"C:\Users\michael.rojas\Documents\CUENTA8\Cálculo de Pendientes Divipola\CENTROS_POBLADOS\CENTROS_POBLADOS.shp"
-    MDT = r"C:\Users\michael.rojas\Downloads\Servicio-159\SRTM30\SRTM_30_Col1.tif"
-    FIELD = "COD8"
+    gdb = r"\\repositorio\DirGesInfGeo\2410SCG\H_Informacion_Consulta\Coberturas\Area_Urbana_DANE_Clase1CM_Clase2CP_V2023.shp"
+    MDT = r"\\172.26.0.20\Elite_Sub_Geografia_Cartografia\MD\Proyectos\SRTM30_Origen_Unico\srtm_30_extend.img"
 
     codigos_2 = []
     for cod in codigos:
         codigos_2.append(cod)
     cod_tup = tuple(codigos_2)
     codigos_tupla = tuple(codigos)
+
+            #Funcion para Seleccionar municipios ------------------------------------------------------
+    def seleccion_municipios(gdb, codigos_tupla, ruta_salida):
+        arcpy.AddMessage("Procesando municipios")
+        arcpy.env.workspace = gdb
+        query_prueba = "COD8 IN {}".format(codigos_tupla)
+        select = arcpy.SelectLayerByAttribute_management(gdb, "NEW_SELECTION", query_prueba)
+        temp = arcpy.management.CopyFeatures (select, os.path.join(ruta_salida, "Mun.shp"))
+        return temp     
             
-    select = seleccion_municipios(gdb, cod_tup,ruta_salida, FIELD)
+    select = seleccion_municipios(gdb, cod_tup,ruta_salida)
     shp =  clip(select, MDT, ruta_salida)
-    Reporte(shp, ruta_salida, codigos_tupla)
+    Reporte(shp, ruta_salida, codigos_tupla, zona)
     arcpy.Delete_management([select,shp])
