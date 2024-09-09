@@ -1,29 +1,28 @@
+#Dirección de Gestión de Información Geográfica 
+#Grupo de desarrollo IGAC
+#Elaboró / Modifico:  Michael Andres Rojas - Diego Rugeles
+#09/09/2024
+
 import arcpy
 from arcpy.sa import *
 import os
 
 arcpy.env.overwriteOutput = True
 #Llamar municipios y MDT
-
 codigos = arcpy.GetParameter(0)
-gdb = r"\\172.26.0.20\Elite_Sub_Geografia_Cartografia\Coberturas\GDB_FLET_Agosto_2023.gdb"
-MDT = r"\\172.26.0.20\Elite_Sub_Geografia_Cartografia\MD\Proyectos\SRTM30_Origen_Unico\srtm_30_extend.img"
 ruta_salida = arcpy.GetParameterAsText(1)
-codigos_2 = []
-for cod in codigos:
-    codigos_2.append(cod)
-cod_tup = tuple(codigos_2)
-codigos_tupla = tuple(codigos)
+zona = arcpy.GetParameterAsText(2)
+
 
 #Funcion para Seleccionar municipios ------------------------------------------------------
-def seleccion_municipios(gdb, codigos_tupla, ruta_salida):
+def seleccion_municipios(gdb, codigos_tupla, ruta_salida, FIELD):
     arcpy.AddMessage("Procesando municipios")
     arcpy.env.workspace = gdb
     query_prueba = "MpCodigo IN {}".format(codigos_tupla)
     select = arcpy.SelectLayerByAttribute_management('Munpio', "NEW_SELECTION", query_prueba)
     temp = arcpy.management.CopyFeatures (select, os.path.join(ruta_salida, "Mun.shp"))
     return temp      
-             
+            
 #Funcion para clasificar pendientes ------------------------------------------------------
 def clip(temp, MDT, ruta_salida):
     arcpy.AddMessage("Iniciando Clasificación")
@@ -92,8 +91,36 @@ def Reporte(shp, ruta_salida, codigos_tupla):
             archivo.write("La mayor pendiente es 20-35 % ------ {0} hectáreas.\n".format(str(max_pendiente)))
         elif max_pendiente == Pendiente4:
             archivo.write("La mayor pendiente es >35 % ------ {0} hectáreas.\n".format(str(max_pendiente)))
-        
-select = seleccion_municipios(gdb, cod_tup,ruta_salida)
-shp =  clip(select, MDT, ruta_salida)
-Reporte(shp, ruta_salida, codigos_tupla)
-arcpy.Delete_management([select,shp])
+
+if zona == "Rural":
+
+    gdb = r"\\172.26.0.20\Elite_Sub_Geografia_Cartografia\Coberturas\GDB_FLET_Agosto_2023.gdb"
+    MDT = r"\\172.26.0.20\Elite_Sub_Geografia_Cartografia\MD\Proyectos\SRTM30_Origen_Unico\srtm_30_extend.img"
+    FIELD = "MpCodigo"
+
+    codigos_2 = []
+    for cod in codigos:
+        codigos_2.append(cod)
+    cod_tup = tuple(codigos_2)
+    codigos_tupla = tuple(codigos)
+            
+    select = seleccion_municipios(gdb, cod_tup,ruta_salida, FIELD)
+    shp =  clip(select, MDT, ruta_salida)
+    Reporte(shp, ruta_salida, codigos_tupla)
+    arcpy.Delete_management([select,shp])
+else:
+    
+    gdb = r"C:\Users\michael.rojas\Documents\CUENTA8\Cálculo de Pendientes Divipola\CENTROS_POBLADOS\CENTROS_POBLADOS.shp"
+    MDT = r"C:\Users\michael.rojas\Downloads\Servicio-159\SRTM30\SRTM_30_Col1.tif"
+    FIELD = "COD8"
+
+    codigos_2 = []
+    for cod in codigos:
+        codigos_2.append(cod)
+    cod_tup = tuple(codigos_2)
+    codigos_tupla = tuple(codigos)
+            
+    select = seleccion_municipios(gdb, cod_tup,ruta_salida, FIELD)
+    shp =  clip(select, MDT, ruta_salida)
+    Reporte(shp, ruta_salida, codigos_tupla)
+    arcpy.Delete_management([select,shp])
