@@ -43,6 +43,10 @@ with arcpy.da.SearchCursor(featuretopoint, ["SHAPE@", "CODIGO", "CODIGO_ANT"]) a
                 else:
                     polygon_point_counts[polygon_id] = {'count': 1, 'CODIGO': point[1], 'CODIGO_ANT': point[2]}
 
+nombreBV = os.path.basename(Base_Vectorizada)
+
+arcpy.AddMessage(f"Iniciando Actualización de datos en: {nombreBV}")
+
 # Actualizar los atributos en Base_Vectorizada donde hay exactamente un punto
 with arcpy.da.UpdateCursor(Base_Vectorizada, ["OID@", "CODIGO", "CODIGO_ANT"]) as update_cursor:
     for row in update_cursor:
