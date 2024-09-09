@@ -45,16 +45,36 @@ with arcpy.da.SearchCursor(featuretopoint, ["SHAPE@", "CODIGO", "CODIGO_ANT"]) a
 
 nombreBV = os.path.basename(Base_Vectorizada)
 
-arcpy.AddMessage(f"Iniciando Actualización de datos en: {nombreBV}")
+# Obtener el workspace (directorio de la geodatabase)
+workspace = os.path.dirname(Base_Vectorizada)
 
-# Actualizar los atributos en Base_Vectorizada donde hay exactamente un punto
-with arcpy.da.UpdateCursor(Base_Vectorizada, ["OID@", "CODIGO", "CODIGO_ANT"]) as update_cursor:
-    for row in update_cursor:
-        polygon_id = row[0]
-        if polygon_id in polygon_point_counts and polygon_point_counts[polygon_id]['count'] == 1:
-            row[1] = polygon_point_counts[polygon_id]['CODIGO']
-            row[2] = polygon_point_counts[polygon_id]['CODIGO_ANT']
-            update_cursor.updateRow(row)
-            arcpy.AddMessage(f"Polígono OID {polygon_id} actualizado con CODIGO {row[1]} y CODIGO_ANT {row[2]}.")
+try:
+    # Iniciar sesión de edición
+    editor = arcpy.da.Editor(workspace)
+    editor.startEditing(False, False)  # Cambiar a False para no usar versionado si no es necesario
+    editor.startOperation()
 
-arcpy.AddMessage("Proceso finalizado con éxito.")
+    arcpy.AddMessage(f"Iniciando Actualización de datos en: {nombreBV}")
+
+    # Actualizar los atributos en Base_Vectorizada donde hay exactamente un punto
+    with arcpy.da.UpdateCursor(Base_Vectorizada, ["OID@", "CODIGO", "CODIGO_ANT"]) as update_cursor:
+        for row in update_cursor:
+            polygon_id = row[0]
+            if polygon_id in polygon_point_counts and polygon_point_counts[polygon_id]['count'] == 1:
+                row[1] = polygon_point_counts[polygon_id]['CODIGO']
+                row[2] = polygon_point_counts[polygon_id]['CODIGO_ANT']
+                update_cursor.updateRow(row)
+                arcpy.AddMessage(f"Polígono OID {polygon_id} actualizado con CODIGO {row[1]} y CODIGO_ANT {row[2]}.")
+
+    editor.stopOperation()
+    editor.stopEditing(True)
+    arcpy.AddMessage("Proceso finalizado con éxito.")
+
+except Exception as e:
+    arcpy.AddError(f"Error durante la edición: {e}")
+    if editor.isEditing:
+        editor.stopEditing(False)  # Cancelar la edición en caso de error
+
+finally:
+    if editor.isEditing:
+        editor.stopEditing(True)  # Asegurar que la edición se detiene
