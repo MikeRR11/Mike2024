@@ -129,7 +129,7 @@ else:
     def seleccion_municipios(gdb, codigos_tupla, ruta_salida):
         arcpy.AddMessage("Procesando municipios")
         arcpy.env.workspace = gdb
-        query_prueba = "setr_ccnct IN {}".format(codigos_tupla)
+        query_prueba = "zu_cdivi IN {}".format(codigos_tupla)
         select = arcpy.SelectLayerByAttribute_management(gdb, "NEW_SELECTION", query_prueba)
         temp = arcpy.management.CopyFeatures (select, os.path.join(ruta_salida, "Mun.shp"))
         return temp     

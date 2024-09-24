@@ -106,7 +106,7 @@ def join_excel(excel, ruta_salida, mun, cp, mun_dobles,mp_rural,pnn):
                     encontrado = False
                     with arcpy.da.SearchCursor(mun_dobles, ['SHAPE@', 'MpCodigo', 'ORTO_R']) as sCur:
                         for sRow in sCur:
-                            mp_codigo_cr = sRow[1]
+                            mp_codigo_cr = sRow[1][:5]
                             #arcpy.AddMessage(f"Revisando DIVIPOLA {uRow[1]} con Ortoimagen_rural {uRow[2]}")
                             if str(sRow[2]) == str(uRow[2]) and str(mp_codigo_cr) == str(uRow[1]):
                                 row_list = list(uRow)
