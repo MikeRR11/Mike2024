@@ -1,3 +1,8 @@
+#Desarrollo Transferencia de Datos Catastrales
+#Desarrollado por : Michael Andres Rojas Rivera y Yaritza Dorely Quevedo Tovar
+#Actualizado V2 13/09/2024
+#Descripción: Script para la migración y transferencia de datos de una capa LADM a una base de datos con vacios de información catastral.
+
 import arcpy
 import os
 
@@ -43,44 +48,80 @@ with arcpy.da.SearchCursor(featuretopoint, ["SHAPE@", "CODIGO", "CODIGO_ANT"]) a
                 else:
                     polygon_point_counts[polygon_id] = {'count': 1, 'CODIGO': point[1], 'CODIGO_ANT': point[2]}
 
-nombreBV = os.path.basename(Base_Vectorizada)
+# Actualizar los atributos en Base_Vectorizada donde hay exactamente un punto
+with arcpy.da.UpdateCursor(Base_Vectorizada, ["OID@", "CODIGO", "CODIGO_ANT"]) as update_cursor:
+    for row in update_cursor:
+        polygon_id = row[0]
+        if polygon_id in polygon_point_counts and polygon_point_counts[polygon_id]['count'] == 1:
+            row[1] = polygon_point_counts[polygon_id]['CODIGO']
+            row[2] = polygon_point_counts[polygon_id]['CODIGO_ANT']
+            update_cursor.updateRow(row)
+            arcpy.AddMessage(f"Polígono OID {polygon_id} actualizado con CODIGO {row[1]} y CODIGO_ANT {row[2]}.")
 
-# Verificar el workspace correcto (geodatabase contenedora)
-desc = arcpy.Describe(Base_Vectorizada)
-if desc.dataType == "FeatureClass":
-    workspace = desc.path  # Obtener la geodatabase contenedora directamente
-    arcpy.AddMessage(f"Geodatabase contenedora: {workspace}")
+########### POLÍGONOS CON MAS DE UN CENTROIDE (pequeños) #########################
 
-    try:
-        # Iniciar sesión de edición
-        editor = arcpy.da.Editor(workspace)
-        editor.startEditing(False, False)
-        editor.startOperation()
 
-        arcpy.AddMessage(f"Iniciando Actualización de datos en: {nombreBV}")
+# Crear una capa temporal para Base_Catastral
+Base_Catastral_Layer = "Base_Catastral_Layer"
+arcpy.MakeFeatureLayer_management(Base_Catastral, Base_Catastral_Layer)
+arcpy.AddMessage("Capa temporal 'Base_Catastral_Layer' creada.")
 
-        # Actualizar los atributos en Base_Vectorizada donde hay exactamente un punto
-        with arcpy.da.UpdateCursor(Base_Vectorizada, ["OID@", "CODIGO", "CODIGO_ANT"]) as update_cursor:
-            for row in update_cursor:
-                polygon_id = row[0]
-                if polygon_id in polygon_point_counts and polygon_point_counts[polygon_id]['count'] == 1:
-                    row[1] = polygon_point_counts[polygon_id]['CODIGO']
-                    row[2] = polygon_point_counts[polygon_id]['CODIGO_ANT']
-                    update_cursor.updateRow(row)
-                    arcpy.AddMessage(f"Polígono OID {polygon_id} actualizado con CODIGO {row[1]} y CODIGO_ANT {row[2]}.")
+arcpy.AddMessage("Procesando y transfiriendo datos")
 
-        editor.stopOperation()
-        editor.stopEditing(True)
-        arcpy.AddMessage("Proceso finalizado con éxito.")
+# Iterar sobre los polígonos en Base_Vectorizada
+with arcpy.da.UpdateCursor(Base_Vectorizada, ["OID@", "SHAPE@", "CODIGO", "CODIGO_ANT"]) as vector_cursor:
+    for vector_row in vector_cursor:
+        vector_oid = vector_row[0]
+        vector_shape = vector_row[1]
+        vector_codigo = vector_row[2]
+        vector_codigo_ant = vector_row[3]
 
-    except Exception as e:
-        arcpy.AddError(f"Error durante la edición: {e}")
-        if editor and editor.isEditing:
-            editor.stopEditing(False)
+        # Solo proceder si los campos CODIGO y CODIGO_ANT están vacíos
+        if not vector_codigo or not vector_codigo_ant:
+            # Mensaje de depuración
+            #arcpy.AddMessage(f"Procesando polígono OID {vector_oid} en Base_Vectorizada.")
 
-    finally:
-        if editor and editor.isEditing:
-            editor.stopEditing(True)
+            # Verificar que vector_shape no sea None y que Base_Catastral_Layer exista
+            if vector_shape is None:
+                arcpy.AddWarning(f"Geometría del polígono OID {vector_oid} en Base_Vectorizada es None.")
+                continue
+            
+            if arcpy.Exists(Base_Catastral_Layer):
+                # Seleccionar los polígonos en Base_Catastral que contienen el polígono en Base_Vectorizada
+                try:
+                    arcpy.management.SelectLayerByLocation(Base_Catastral_Layer, "CONTAINS", vector_shape)
+                except Exception as e:
+                    arcpy.AddWarning(f"Error al seleccionar características GEOMETRIA NULA DE BASE VECTORIZADA EN OID {vector_row[0]} : {e}")
+                    continue
 
-else:
-    arcpy.AddError("Base_Vectorizada no es un feature class válido.")
+                # Verificar si se seleccionaron resultados
+                count = int(arcpy.management.GetCount(Base_Catastral_Layer).getOutput(0))
+                if count > 0:
+                    # Buscar la información del primer polígono en Base_Catastral que contiene el polígono en Base_Vectorizada
+                    with arcpy.da.SearchCursor(Base_Catastral_Layer, ["OID@", "CODIGO", "CODIGO_ANT", "SHAPE@"]) as catastral_cursor:
+                        for catastral_row in catastral_cursor:
+                            catastral_oid = catastral_row[0]
+                            catastral_codigo = catastral_row[1]
+                            catastral_codigo_ant = catastral_row[2]
+                            catastral_shape = catastral_row[3]
+                            
+                            # Asegurarse de que catastral_shape no sea None
+                            if catastral_shape is None:
+                                arcpy.AddError(f"Geometría del polígono OID {catastral_oid} en Base_Catastral es None.")
+                                continue
+
+                            if catastral_shape.contains(vector_shape):
+                                vector_row[2] = catastral_codigo
+                                vector_row[3] = catastral_codigo_ant
+                                vector_cursor.updateRow(vector_row)
+                                arcpy.AddMessage(f"Polígono OID {vector_oid} en Base_Vectorizada actualizado con CODIGO {vector_row[2]} y CODIGO_ANT {vector_row[3]}.")
+                                break  # Salir del cursor una vez actualizado
+                else:
+                    pass
+            else:
+                arcpy.AddError(f"La capa {Base_Catastral_Layer} no existe.")
+
+# Eliminar la capa temporal
+arcpy.management.Delete(Base_Catastral_Layer)
+
+arcpy.AddMessage("Proceso finalizado con éxito.")
