@@ -54,8 +54,7 @@ def main():
 
         # Diccionario para mapear las relaciones espaciales
         relaciones_dict = {
-            "Intersects": lambda g1, g2: g1.overlaps(g2) or g1.touches(g2) or g1.contains(g2),
-            "Within": lambda g1, g2: g1.within(g2),
+            "Intersects": lambda g1, g2: g1.overlaps(g2) or g1.touches(g2) or g1.contains(g2) or g1.within(g2),
             "Within": lambda g1, g2: g1.within(g2),
             "Contains": lambda g1, g2: g1.contains(g2),
             "Touches": lambda g1, g2: g1.touches(g2),
