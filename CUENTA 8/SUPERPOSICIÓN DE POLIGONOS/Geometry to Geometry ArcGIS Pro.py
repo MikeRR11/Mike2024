@@ -86,15 +86,23 @@ def main():
                                 oid2, geom2 = row2
                                 if oid1 != oid2:  # Evitar comparación consigo mismo
                                     if relaciones_dict[relacion](geom1, geom2):
-                                        if relacion == "Touches":
-                                            # Exportar solo la geometría más pequeña en caso de 'Touches'
-                                            area1 = get_geometry_area(geom1)
-                                            area2 = get_geometry_area(geom2)
+                                        area1 = get_geometry_area(geom1)
+                                        area2 = get_geometry_area(geom2)
+
+                                        if relacion in ["Touches", "Overlaps"]:
+                                            # Exportar siempre la geometría más pequeña
                                             if area1 < area2:
                                                 features_to_export.append(geom1)
                                             else:
                                                 features_to_export.append(geom2)
+                                        elif relacion == "Contains":
+                                            # Exportar siempre la geometría más grande
+                                            if area1 > area2:
+                                                features_to_export.append(geom1)
+                                            else:
+                                                features_to_export.append(geom2)
                                         else:
+                                            # Para otras relaciones, exportar geom1 por defecto
                                             features_to_export.append(geom1)
                                         break  # No es necesario continuar comparando si ya cumple la relación
 
@@ -109,7 +117,7 @@ def main():
                 # Añadir campo de relación
                 arcpy.management.AddField(salida_fc, "Relacion", "TEXT", field_length=20)
                 arcpy.management.CalculateField(salida_fc, "Relacion", f'"{relacion}"', "PYTHON3")
-
+                arcpy.management.DeleteIdentical( in_dataset=salida_fc,fields="Shape", xy_tolerance=None,z_tolerance=0)
                 # Agregar el resultado al mapa actual
                 aprx = arcpy.mp.ArcGISProject("CURRENT")
                 mapa = aprx.activeMap
@@ -129,4 +137,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
