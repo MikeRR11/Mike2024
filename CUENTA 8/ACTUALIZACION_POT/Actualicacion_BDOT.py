@@ -64,7 +64,7 @@ def join_excel(excel, ruta_salida, bdot, munpi):
                     fecha_index = fields_table_OT.index('fecha_adop')
                     if new_row[fecha_index]:
                         try:
-                            new_row[fecha_index] = datetime.strptime(new_row[fecha_index], "%d/%m/%Y")
+                            new_row[fecha_index] = new_row[fecha_index]
                         except ValueError:
                             new_row[fecha_index] = None  # Manejar fecha inválida
                     else:
