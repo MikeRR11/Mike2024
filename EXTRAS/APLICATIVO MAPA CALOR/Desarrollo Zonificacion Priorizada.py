@@ -10,6 +10,7 @@ features = arcpy.GetParameterAsText(0)  # Entrada de features desde toolbox
 campo_categoria = arcpy.GetParameterAsText(1)  # Campo para clasificar
 ruta_salida = arcpy.GetParameterAsText(2)  # Ruta de salida para los resultados
 espacio = ".                                                                   ."
+espacio2 = "-------------------------------------------------------------------------------------------------------"
 
 # Validación de entradas
 if not os.path.exists(ruta_salida):
@@ -33,10 +34,10 @@ arcpy.CreateFileGDB_management(ruta_salida, nombre_gdb)
 def generar_shapefiles_y_kernel_density(layer, campo, output_gdb):
     categorias = list(set([row[0] for row in arcpy.da.SearchCursor(layer, [campo])]))  # Obtener categorías únicas
     Feature_Entrada = os.path.basename(layer)
-    arcpy.AddMessage(espacio)
+    arcpy.AddMessage(espacio2)
     arcpy.AddMessage(f"PROCESANDO FEATURE CLASS: {Feature_Entrada}...")
     arcpy.AddMessage(f"Creando listas de categorías: {categorias}")
-
+    arcpy.AddMessage(espacio2)
     for categoria in categorias:
         # Crear una query para seleccionar cada categoría
         query = f"{campo} = {categoria}"  # Campo numérico (Short)
@@ -151,6 +152,7 @@ def generar_shapefiles_y_kernel_density(layer, campo, output_gdb):
 # Procesar cada feature layer
 for feature in features_Lista:
     generar_shapefiles_y_kernel_density(feature, campo_categoria, gdb_temporal)
-
-arcpy.AddMessage("Proceso completado.")
+    
+arcpy.AddMessage(espacio2)
+arcpy.AddMessage("PROCESO FINALIZADO CON ÉXITO")
 
