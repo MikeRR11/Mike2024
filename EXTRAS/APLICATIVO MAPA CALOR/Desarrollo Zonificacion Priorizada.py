@@ -114,13 +114,16 @@ def generar_shapefiles_y_kernel_density(layer, campo, output_gdb):
 
                 
         # Agregar un nuevo campo para la categoría después del merge
-        arcpy.management.AddField(output_feature_smooth, "Zona_Priorización", "TEXT")
+        arcpy.management.AddField(output_feature_smooth, campo_categoria, "TEXT")
 
         #Eliminar campos sobrantes
-        Campos = ["InPoly_FID","SmoPgnFlag"]
+        Campos = ["SmoPgnFlag"]
+        Campo2= "InPoly_FID"
         arcpy.management.DeleteField(output_feature_smooth, Campos)
+        arcpy.management.AlterField(output_feature_smooth, Campo2, "Zona_Priorizacion", "Zona Priorizacion")
+
         # Llenar el nuevo campo con la categoría correspondiente
-        with arcpy.da.UpdateCursor(output_feature_smooth, ["Zona_Priorización"]) as cursor:
+        with arcpy.da.UpdateCursor(output_feature_smooth, [campo_categoria]) as cursor:
             for row in cursor:
                 row[0] = categoria  # Asignar la categoría
                 cursor.updateRow(row)
@@ -145,6 +148,19 @@ def generar_shapefiles_y_kernel_density(layer, campo, output_gdb):
 
         # Insertar los polígonos suavizados en el Feature Class consolidado
         arcpy.management.Append([output_feature_smooth], Feature_Final, "NO_TEST")
+
+        
+        #####################################################################################################
+        #Insertar valores de zona en feature original
+        # Seleccionar puntos que están dentro de los polígonos
+        arcpy.management.SelectLayerByLocation(layer, 'WITHIN', output_feature_smooth)
+        arcpy.management.SelectLayerByAttribute(layer, "NEW_SELECTION", f"{campo} = {categoria}", invert_where_clause = False)
+
+        # Actualizar los atributos de los puntos seleccionados
+        with arcpy.da.UpdateCursor(layer, ['SHAPE@', campo, 'Campo2']) as cursor:
+            for punto in cursor:
+                s
+
 
 
 
