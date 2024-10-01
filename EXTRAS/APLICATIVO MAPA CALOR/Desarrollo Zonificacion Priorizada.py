@@ -151,15 +151,38 @@ def generar_shapefiles_y_kernel_density(layer, campo, output_gdb):
 
         
         #####################################################################################################
-        #Insertar valores de zona en feature original
-        # Seleccionar puntos que están dentro de los polígonos
-        arcpy.management.SelectLayerByLocation(layer, 'WITHIN', output_feature_smooth)
-        arcpy.management.SelectLayerByAttribute(layer, "NEW_SELECTION", f"{campo} = {categoria}", invert_where_clause = False)
+        #Insertar valores de zona en feature de puntos, primero crear una copia del layer de puntos
+        zonas_puntos = os.path.join(output_dataset, f"Zonas_Priorizacion_{Feature_Entrada}_Puntos")
+        if not arcpy.Exist(zonas_puntos):
+            arcpy.management.CopyFeatures(layer, zonas_puntos)
+            arcpy.management.AddField(zonas_puntos, "Zona_Priorizacion", "SHORT")
 
-        # Actualizar los atributos de los puntos seleccionados
-        with arcpy.da.UpdateCursor(layer, ['SHAPE@', campo, 'Campo2']) as cursor:
-            for punto in cursor:
-                s
+        #Seleccionar puntos que están dentro de los polígonos
+        arcpy.management.SelectLayerByLocation(zonas_puntos, 'WITHIN', output_feature_smooth)
+        # Ahora aplicar la selección adicional basándote en un campo específico
+        arcpy.management.SelectLayerByAttribute(layer, "NEW_SELECTION", f"{campo} = {categoria}", invert_where_clause=False)
+
+        # Crear un cursor de búsqueda para recorrer los polígonos
+        with arcpy.da.SearchCursor(output_feature_smooth, ['SHAPE@', 'Zona_Priorizacion']) as poligonos_cursor:
+            for poligono in poligonos_cursor:
+                poligono_geom = poligono[0]
+                zona_priorizacion_valor = poligono[1]
+                
+                # Crear un cursor de actualización para los puntos que intersectan con cada polígono
+                with arcpy.da.UpdateCursor(zonas_puntos, ['SHAPE@', 'Zona_Priorizacion']) as puntos_cursor:
+                    for punto in puntos_cursor:
+                        punto_geom = punto[0]
+                        
+                        # Verificar si el punto está dentro del polígono
+                        if poligono_geom.contains(punto_geom):
+                            # Actualizar el campo 'Zona_Priorizacion' con el valor del polígono
+                            punto[1] = zona_priorizacion_valor
+                            puntos_cursor.updateRow(punto)
+
+        # Limpiar selección
+        arcpy.management.SelectLayerByAttribute(zonas_puntos, 'CLEAR_SELECTION')
+
+
 
 
 
@@ -171,4 +194,3 @@ for feature in features_Lista:
     
 arcpy.AddMessage(espacio2)
 arcpy.AddMessage("PROCESO FINALIZADO CON ÉXITO")
-
