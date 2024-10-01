@@ -109,35 +109,21 @@ def generar_shapefiles_y_kernel_density(layer, campo, output_gdb):
         arcpy.cartography.SmoothPolygon(merged_output, output_feature_smooth, algorithm="PAEK", tolerance="1000 Meters",
                                                 endpoint_option="FIXED_ENDPOINT", error_option="RESOLVE_ERRORS")
 
-        # Mensaje para indicar que el proceso ha terminado correctamente
-        arcpy.AddMessage(f"Polígonos creados para la priorización {categoria} del Feature {Feature_Entrada}")
-
                 
         # Agregar un nuevo campo para la categoría después del merge
         arcpy.management.AddField(output_feature_smooth, campo_categoria, "TEXT")
+        arcpy.management.AddField(output_feature_smooth, "Zona_Priorizacion", "TEXT")
 
         #Eliminar campos sobrantes
-        Campos = ["SmoPgnFlag"]
+        Campo1 = ["SmoPgnFlag"]
         Campo2= "InPoly_FID"
-        arcpy.management.DeleteField(output_feature_smooth, Campos)
-        arcpy.management.AlterField(output_feature_smooth, Campo2, "Zona_Priorizacion", "Zona Priorizacion")
 
         # Llenar el nuevo campo con la categoría correspondiente
-        with arcpy.da.UpdateCursor(output_feature_smooth, [campo_categoria]) as cursor:
+        with arcpy.da.UpdateCursor(output_feature_smooth, [campo_categoria, Campo2,"Zona_Priorizacion"]) as cursor:
             for row in cursor:
                 row[0] = categoria  # Asignar la categoría
+                row[2] = f"{categoria}_{row[1]}"
                 cursor.updateRow(row)
-
-        #Eliminar datos temporales
-        Lista_Borrar = [output_kernel,
-                        raster_entero_path,
-                        output_polygon,
-                        output_feature_select,
-                        merged_output,
-                        output_feature_class] 
-        
-        for temporal in Lista_Borrar:
-             arcpy.management.Delete(temporal)
 
         #Definir y crear  de Feature con todas las la categoria de priorizacion
         Feature_Final = os.path.join(output_dataset, f"Zonas_Calientes_{Feature_Entrada}")
@@ -148,44 +134,55 @@ def generar_shapefiles_y_kernel_density(layer, campo, output_gdb):
 
         # Insertar los polígonos suavizados en el Feature Class consolidado
         arcpy.management.Append([output_feature_smooth], Feature_Final, "NO_TEST")
+        arcpy.management.DeleteField(output_feature_smooth, Campo1)
+        arcpy.management.DeleteField(output_feature_smooth, Campo2)
 
-        
+        # Mensaje para indicar que el proceso ha terminado correctamente
+        arcpy.AddMessage(f"Polígonos creados para la priorización {categoria} del Feature {Feature_Entrada}")
+
+
         #####################################################################################################
         #Insertar valores de zona en feature de puntos, primero crear una copia del layer de puntos
+
         zonas_puntos = os.path.join(output_dataset, f"Zonas_Priorizacion_{Feature_Entrada}_Puntos")
-        if not arcpy.Exist(zonas_puntos):
+        if not arcpy.Exists(zonas_puntos):
             arcpy.management.CopyFeatures(layer, zonas_puntos)
-            arcpy.management.AddField(zonas_puntos, "Zona_Priorizacion", "SHORT")
+            arcpy.management.AddField(zonas_puntos, "Zona_Priorizacion", "TEXT")
 
-        #Seleccionar puntos que están dentro de los polígonos
+        # Seleccionar puntos que están dentro de los polígonos suavizados
         arcpy.management.SelectLayerByLocation(zonas_puntos, 'WITHIN', output_feature_smooth)
-        # Ahora aplicar la selección adicional basándote en un campo específico
-        arcpy.management.SelectLayerByAttribute(layer, "NEW_SELECTION", f"{campo} = {categoria}", invert_where_clause=False)
 
-        # Crear un cursor de búsqueda para recorrer los polígonos
+        # Crear un cursor de búsqueda para recorrer los polígonos suavizados
         with arcpy.da.SearchCursor(output_feature_smooth, ['SHAPE@', 'Zona_Priorizacion']) as poligonos_cursor:
             for poligono in poligonos_cursor:
-                poligono_geom = poligono[0]
-                zona_priorizacion_valor = poligono[1]
-                
-                # Crear un cursor de actualización para los puntos que intersectan con cada polígono
+                poligono_geom = poligono[0]  # Geometría del polígono
+                zona_priorizacion_valor = poligono[1]  # Valor de la priorización
+
+                # Crear un cursor de actualización para los puntos
                 with arcpy.da.UpdateCursor(zonas_puntos, ['SHAPE@', 'Zona_Priorizacion']) as puntos_cursor:
                     for punto in puntos_cursor:
-                        punto_geom = punto[0]
-                        
-                        # Verificar si el punto está dentro del polígono
+                        punto_geom = punto[0]  # Geometría del punto
+
+                        # Verificar si el punto está dentro del polígono (no depender solo del SelectLayerByLocation)
                         if poligono_geom.contains(punto_geom):
-                            # Actualizar el campo 'Zona_Priorizacion' con el valor del polígono
-                            punto[1] = zona_priorizacion_valor
+                            punto[1] = zona_priorizacion_valor  # Asignar el valor de priorización
                             puntos_cursor.updateRow(punto)
 
+            
+        arcpy.AddMessage(f"Puntos clasificados para priorización {categoria} del Feature {Feature_Entrada}")
         # Limpiar selección
         arcpy.management.SelectLayerByAttribute(zonas_puntos, 'CLEAR_SELECTION')
-
-
-
-
-
+        
+        #Eliminar datos temporales
+        Lista_Borrar = [output_kernel,
+                        raster_entero_path,
+                        output_polygon,
+                        output_feature_select,
+                        merged_output,
+                        output_feature_class] 
+        
+        for temporal in Lista_Borrar:
+             arcpy.management.Delete(temporal)
 
 
 # Procesar cada feature layer
