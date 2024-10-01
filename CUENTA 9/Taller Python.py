@@ -8,57 +8,83 @@
 import arcpy
 import os
 
-# Recibir las capas de municipios y parques nacionales como parámetros
-municipios = arcpy.GetParameterAsText(0)
-parques_nacionales = arcpy.GetParameterAsText(1)
+# Recibir las capas de municipios, parques nacionales y consulta SQL como parámetros
+municipios = arcpy.GetParameterAsText(0)  # Shapefile de municipios
+parques_nacionales = arcpy.GetParameterAsText(1)  # Capa de parques nacionales
+SQL = arcpy.GetParameterAsText(2)  # Consulta SQL para selecciones adicionales
+Ruta_Salida = arcpy.GetParameterAsText(3)  # Ruta de salida de los datos
 
-# Habilitar sobreescritura de resultados
+# Configurar el entorno de trabajo y sobreescribir resultados
 arcpy.env.overwriteOutput = True
 
-# Seleccionar los municipios del departamento de Amazonas
-# Explicación: Se usa la función SelectLayerByAttribute para seleccionar por un criterio en la tabla de atributos
-arcpy.AddMessage("Seleccionando municipios del departamento de Amazonas...")
-arcpy.management.SelectLayerByAttribute(municipios, "NEW_SELECTION", "Depto = 'Amazonas'")
+# Crear una geodatabase de trabajo
+gdb_path = os.path.join(Ruta_Salida,"TallerSG.gdb")
+if not arcpy.Exists(gdb_path):
+    arcpy.management.CreateFileGDB(Ruta_Salida, "TallerSG.gdb")
+arcpy.AddMessage(f"Geodatabase creada en: {gdb_path}")
 
-# Agregar una nueva columna para indicar si el municipio tiene parques
-campo_nuevo = "Parques"
-if not arcpy.ListFields(municipios, campo_nuevo):
+
+# Definir el sistema de referencia MAGNA-SIRGAS Origen Nacional
+sr = arcpy.SpatialReference(9377)  # Código EPSG 9377 para Colombia MAGNA-SIRGAS
+
+# Crear una copia de la capa de municipios en la geodatabase con la nueva proyección, tambien se puede usar arcpy.management.CopyFeatures, en este caso reproyectamos a origen nacional
+municipios_copia = os.path.join(gdb_path, "Municipios_Proyectados")
+arcpy.management.Project(municipios, municipios_copia, sr)
+arcpy.AddMessage(f"Copia de la capa de municipios proyectada a MAGNA-SIRGAS creada en: {municipios_copia}")
+
+
+# Agregar un nuevo campo para indicar si el municipio tiene parques
+campo_nuevo = "Tiene_Parques"
+if not arcpy.ListFields(municipios_copia, campo_nuevo):
     arcpy.AddMessage(f"Agregando campo '{campo_nuevo}'...")
-    arcpy.management.AddField(municipios, campo_nuevo, "TEXT", field_length=10)
+    arcpy.management.AddField(municipios_copia, campo_nuevo, "TEXT", field_length=10)
 else:
     arcpy.AddMessage(f"El campo '{campo_nuevo}' ya existe.")
 
 
-
 # Selección por localización: municipios que se intersectan con parques nacionales
-# Explicación: Seleccionamos municipios que están dentro o intersectan con parques nacionales
 arcpy.AddMessage("Seleccionando municipios que intersectan con parques nacionales...")
-arcpy.management.SelectLayerByLocation(municipios, "INTERSECT", parques_nacionales, selection_type="SUBSET_SELECTION")
+arcpy.management.SelectLayerByLocation(municipios_copia, "INTERSECT", parques_nacionales, selection_type="SUBSET_SELECTION")
 
 # Uso de SearchCursor: Mostrar los municipios seleccionados
-# Explicación: Aquí usamos SearchCursor para listar los municipios seleccionados antes de hacer actualizaciones
-with arcpy.da.SearchCursor(municipios, ["MpNombre", "Depto"]) as search_cursor:
+with arcpy.da.SearchCursor(municipios_copia, ["MpNombre", "Depto"]) as search_cursor:
     arcpy.AddMessage("Municipios seleccionados que intersectan con parques:")
     for row in search_cursor:
         arcpy.AddMessage(f"Municipio: {row[0]}, Departamento: {row[1]}")
+        Depto = row[1]
 
+# Abrir sesión de edición en la geodatabase
+workspace = gdb_path
+edit = arcpy.da.Editor(workspace)
+edit.startEditing(False, True)  # False = no versionado, True = con autocommit
 
+try:
+    # Iniciar la operación de edición
+    edit.startOperation()
 
+    # Actualizar la nueva columna con 'Sí tiene' para los municipios seleccionados
+    arcpy.AddMessage("Actualizando campo 'Parques' para los municipios que intersectan con parques...")
+    with arcpy.da.UpdateCursor(municipios_copia, [campo_nuevo, "Depto", 'MpNombre' ]) as update_cursor:
+        for row in update_cursor:
+            if row[1] == Depto:  
+                row[0] = 'Sí tiene'  # Actualiza el campo con 'Sí tiene' si el municipio tiene parques
+                update_cursor.updateRow(row)
+                arcpy.AddMessage(f"Municipio {row[2]} actualizado con parques: {row[0]}")
 
-# Actualizar la nueva columna con 'Sí tiene' para los municipios seleccionados
-# Explicación: Se usa UpdateCursor para actualizar la información en los municipios que tienen parques
-arcpy.AddMessage("Actualizando campo 'Tiene_Parques' para los municipios del Amazonas...")
-with arcpy.da.UpdateCursor(municipios, [campo_nuevo, "Depto"]) as update_cursor:
-    for row in update_cursor:
-        if row[1] == "Amazonas":
-            row[0] = 'Sí tiene'  # Actualiza el campo con 'Sí tiene' si el municipio tiene parques
-            update_cursor.updateRow(row)
-            arcpy.AddMessage(f"Municipio actualizado en Amazonas con parques: {row[0]}")
+    # Finalizar la operación de edición
+    edit.stopOperation()
 
+except arcpy.ExecuteError:
+    arcpy.AddError(arcpy.GetMessages(2))
 
-            
+except Exception as e:
+    arcpy.AddError(f"Ocurrió un error: {str(e)}")
 
-# Limpiar la selección
-# Explicación: Limpia la selección actual para evitar errores en otros procesos
-arcpy.management.SelectLayerByAttribute(municipios, "CLEAR_SELECTION")
-arcpy.AddMessage("Selección limpiada.")
+finally:
+    # Limpiar la selección
+    arcpy.management.SelectLayerByAttribute(municipios_copia, "CLEAR_SELECTION")
+    arcpy.AddMessage("Selección limpiada.")
+
+    # Detener la sesión de edición (con guardar cambios)
+    edit.stopEditing(True)  # True para guardar los cambios
+
