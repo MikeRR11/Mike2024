@@ -159,14 +159,21 @@ def generar_shapefiles_y_kernel_density(layer, campo, output_gdb):
                 zona_priorizacion_valor = poligono[1]  # Valor de la priorización
 
                 # Crear un cursor de actualización para los puntos
-                with arcpy.da.UpdateCursor(zonas_puntos, ['SHAPE@', 'Zona_Priorizacion']) as puntos_cursor:
+                with arcpy.da.UpdateCursor(zonas_puntos, ['SHAPE@', 'Zona_Priorizacion','OID@', campo_categoria]) as puntos_cursor:
                     for punto in puntos_cursor:
                         punto_geom = punto[0]  # Geometría del punto
-
-                        # Verificar si el punto está dentro del polígono (no depender solo del SelectLayerByLocation)
-                        if poligono_geom.contains(punto_geom):
-                            punto[1] = zona_priorizacion_valor  # Asignar el valor de priorización
-                            puntos_cursor.updateRow(punto)
+                        ID = punto[2]
+                        punto_categoria = punto[3]
+                        try:
+                            # Verificar si el punto está dentro del polígono
+                            if poligono_geom.contains(punto_geom) and punto_categoria == categoria:
+                                # Asignar el valor de priorización
+                                punto[1] = zona_priorizacion_valor
+                                puntos_cursor.updateRow(punto)
+                        except Exception as e:
+                            arcpy.AddWarning(f"Error al actualizar el punto con ID {ID} del feature {Feature_Entrada}: Geometría invalida ... {str(e)}")
+                            # Continuar con el siguiente punto, no detener el script
+                            continue
 
             
         arcpy.AddMessage(f"Puntos clasificados para priorización {categoria} del Feature {Feature_Entrada}")
