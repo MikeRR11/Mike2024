@@ -54,12 +54,12 @@ else:
 arcpy.AddMessage("Seleccionando municipios que intersectan con parques nacionales...")
 arcpy.management.SelectLayerByLocation(municipios_copia, "INTERSECT", parques_nacionales, selection_type="SUBSET_SELECTION")
 
-# Uso de SearchCursor: Mostrar los municipios seleccionados
+# Uso de SearchCursor: Buscar datos en la table, en este caso vamos a imprimir todos los municipios seleccionados
 with arcpy.da.SearchCursor(municipios_copia, ["MpNombre", "Depto"]) as search_cursor:
     arcpy.AddMessage("Municipios seleccionados que intersectan con parques:")
     for row in search_cursor:
         arcpy.AddMessage(f"Municipio: {row[0]}, Departamento: {row[1]}")
-        Depto = row[1]
+        Depto = row[1] #Sacamos el departamento en cuestion
 
 
 
@@ -93,4 +93,5 @@ arcpy.AddMessage("Selección limpiada.")
 
 # Detener la sesión de edición (con guardar cambios)
 edit.stopEditing(True)  # True para guardar los cambios
+
 
