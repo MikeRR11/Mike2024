@@ -172,7 +172,6 @@ def generar_shapefiles_y_kernel_density(layer, campo, output_gdb):
                                 puntos_cursor.updateRow(punto)
                         except Exception as e:
                             arcpy.AddWarning(f"Error al actualizar el punto con ID {ID} del feature {Feature_Entrada}: Geometría invalida ... {str(e)}")
-                            warning = True
                             # Continuar con el siguiente punto, no detener el script
                             continue
 
@@ -191,8 +190,6 @@ def generar_shapefiles_y_kernel_density(layer, campo, output_gdb):
         
         for temporal in Lista_Borrar:
              arcpy.management.Delete(temporal)
-    if warning == True:
-        arcpy.AddWarning(f"Se recomienda reparar geometrias para el feauture: {Feature_Entrada}")
 
 
 
