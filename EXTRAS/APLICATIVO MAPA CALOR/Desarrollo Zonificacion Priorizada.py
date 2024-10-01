@@ -178,7 +178,7 @@ def generar_shapefiles_y_kernel_density(layer, campo, output_gdb):
 
             
         arcpy.AddMessage(f"Puntos clasificados para priorización {categoria} del Feature {Feature_Entrada}")
-        # Limpiar selección
+        # Limpiar selección.
         arcpy.management.SelectLayerByAttribute(zonas_puntos, 'CLEAR_SELECTION')
         
         #Eliminar datos temporales
