@@ -29,12 +29,42 @@ gdb_temporal = os.path.join(ruta_salida, nombre_gdb)
 arcpy.AddMessage(f"Creando Geodatabase de resultados: {gdb_temporal}")
 arcpy.CreateFileGDB_management(ruta_salida, nombre_gdb)
 
-def curbrimiento(Munpi, features, gdb_temporal):
-    
+def cubrimiento(Munpi, feature, gdb_temporal):
+    #Obteniendo nombre del feature
+    feature_name = f"{os.path.basename(feature)}_Cubrimiento"
+    #Realizar el clip de la capa con el feature de municipios
+    clip = arcpy.gapro.ClipLayer(
+    input_layer= feature,
+    clip_layer=Munpi,
+    out_feature_class= os.path.join(gdb_temporal,feature_name))
 
+    arcpy.AddMessage(f"Clip realizado para {feature_name}")
+    
+    #Añadiendo campos
+    arcpy.management.AddField(clip, "DIVIPOLA", "TEXT")
+    arcpy.management.AddField(clip, "%_CUBRIMIENTO", "DOUBLE")
+
+    conteo_municipio = int(arcpy.management.GetCount(Munpi).getOutput(0))
+
+    # Permitir la iteración de cada elemnto de la tabla de municipios a través de un query dinámico
+    for i in range(1,conteo_municipio+1):
+        SQL = 'OBJECTID = {0}'.format(i)
+        arcpy.AddMessage(f"Inciando iterador para municipio {i}")
+        select_a = arcpy.management.SelectLayerByAttribute(Munpi, "NEW_SELECTION", SQL)
+        select_b = arcpy.management.SelectLayerByLocation(select_a, "WITHIN", clip)
+
+        #Realizar la actualización del campo de % de cubrimiento a partir de la busqueda del DIVIPOLA 
+        with arcpy.da.SearchCursor(select_a,['MpCodigo','SHAPE@AREA']) as Scur:
+            for municipio in Scur:
+                with arcpy.da.UpdateCursor(select_b,["DIVIPOLA","%_CUBRIMIENTO","SHAPE@AREA"]) as Ucur: 
+                    for poligono in Ucur:
+                        poligono[0] = municipio[0]
+                        poligono[1] = (poligono[2]/municipio[1])*100
+                        Ucur.UpdateRow(poligono)
+                        
 
 for feature in features_Lista:
-    curbrimiento(Munpi, features, gdb_temporal)
+    cubrimiento(Munpi, feature, gdb_temporal)
 
 arcpy.AddMessage(espacio2)
 arcpy.AddMessage("PROCESO FINALIZADO CON ÉXITO")
