@@ -83,11 +83,13 @@ else:
     arcpy.AddMessage(f"PROCESO EN COLA PARA LOS FEATURE CLASS ENCONTRADOS:")
     arcpy.AddMessage(features_filtrados)
 
+
 def cubrimiento(Munpi, feature, gdb_temporal, output_dataset):
+
     feature_name = os.path.basename(feature)
     arcpy.AddMessage(espacio)
     arcpy.AddMessage(f"Inciando Proceso para {feature_name}")
-
+    # Obtener el nombre del feature class
     # Realizar el clip con la capa de municipios
     clip2 = arcpy.gapro.ClipLayer(
         input_layer=feature,
@@ -100,24 +102,27 @@ def cubrimiento(Munpi, feature, gdb_temporal, output_dataset):
     dissolve_fields = dissolve_fields_dict.get(feature_name, None)
 
     # Si hay campos de disolución definidos, realizar el Dissolve
-      # Si no hay campos, usamos directamente el clip
     if dissolve_fields:
-        disolve = arcpy.analysis.PairwiseDissolve(
+        disolve = arcpy.management.Dissolve(
             in_features=clip2,
             out_feature_class=os.path.join(gdb_temporal, f"{feature_name}_Dissolve"),
             dissolve_field=dissolve_fields,
             statistics_fields=None,
-            multi_part="MULTI_PART"
+            multi_part="MULTI_PART",
+            unsplit_lines="DISSOLVE_LINES"
         )
         arcpy.AddMessage(f"Dissolve realizado para {feature_name} con campos {', '.join(dissolve_fields)}")
+    else:
+        arcpy.AddWarning(f"No se encontraron campos de disolución para {feature_name}. Se omite el Dissolve.")
 
-    # Realizando intersección con los municipios utilizando Pairwise Intersect
-    clip = arcpy.analysis.PairwiseIntersect(
-    in_features=[disolve, Munpi],
-    out_feature_class=os.path.join(output_dataset, feature_name),
-    join_attributes="ONLY_FID",
+    # Realizando intersección con los municipios
+    clip = arcpy.analysis.Intersect(
+        in_features=[disolve, Munpi],
+        out_feature_class=os.path.join(output_dataset, feature_name),
+        join_attributes="ONLY_FID",
+        cluster_tolerance=None,
+        output_type="INPUT"
     )
-
     arcpy.AddMessage(f"Clip municipal realizado para {feature_name}")
 
     # Añadir campos de DIVIPOLA y CUBRIMIENTO
@@ -126,11 +131,9 @@ def cubrimiento(Munpi, feature, gdb_temporal, output_dataset):
 
     lista = sorted(list(set([row[0] for row in arcpy.da.SearchCursor(Munpi, ['MpNombre'])])))
 
-    # Iterar por cada municipio
+    # Permitir la iteración de cada elemento de la tabla de municipios a través de un query dinámico
     for i in lista:
         SQL = "MpNombre = '{0}'".format(i)  # Comillas simples alrededor de {0} para manejar texto
-        arcpy.management.SelectLayerByAttribute(Munpi, 'CLEAR_SELECTION')
-        arcpy.management.SelectLayerByAttribute(clip, 'CLEAR_SELECTION')
         arcpy.AddMessage(f"Iniciando iterador para municipio {i} ...")
         select_a = arcpy.management.SelectLayerByAttribute(Munpi, "NEW_SELECTION", SQL)
         select_b = arcpy.management.SelectLayerByLocation(clip, "WITHIN", select_a)
@@ -146,9 +149,9 @@ def cubrimiento(Munpi, feature, gdb_temporal, output_dataset):
                         if poligono[1] > 0:
                             arcpy.AddMessage(f"Datos actualizados para municipio {municipio[0]}")
 
-    # Eliminar capas temporales después del procesamiento
+    # Eliminar el clip temporal
     arcpy.management.Delete(clip2)
-    arcpy.management.Delete(disolve)  # Asegúrate de eliminar el dissolve
+    arcpy.management.Delete(disolve)
     arcpy.AddMessage(espacio2)
     arcpy.AddMessage(f"Proceso finalizado para {feature_name}")
 
