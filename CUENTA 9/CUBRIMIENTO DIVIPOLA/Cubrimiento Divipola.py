@@ -111,15 +111,13 @@ def cubrimiento(Munpi, feature, gdb_temporal, output_dataset):
         )
         arcpy.AddMessage(f"Dissolve realizado para {feature_name} con campos {', '.join(dissolve_fields)}")
 
-
-    # Realizando intersección con los municipios
-    clip = arcpy.analysis.Intersect(
-        in_features=[disolve, Munpi],
-        out_feature_class=os.path.join(output_dataset, feature_name),
-        join_attributes="ONLY_FID",
-        cluster_tolerance=None,
-        output_type="INPUT"
+    # Realizando intersección con los municipios utilizando Pairwise Intersect
+    clip = arcpy.analysis.PairwiseIntersect(
+    in_features=[disolve, Munpi],
+    out_feature_class=os.path.join(output_dataset, feature_name),
+    join_attributes="ONLY_FID",
     )
+
     arcpy.AddMessage(f"Clip municipal realizado para {feature_name}")
 
     # Añadir campos de DIVIPOLA y CUBRIMIENTO
