@@ -9,33 +9,24 @@ espacio2 = "--------------------------------------------------------------------
 
 # Parámetros de entrada desde la toolbox
 Munpi = arcpy.GetParameterAsText(0)  # Feature de municipios
-GDB_entrada = arcpy.GetParameterAsText(1)  # GDB con datos
-ruta_salida = arcpy.GetParameterAsText(2)  # Ruta de salida para los resultados
-arcpy.env.workspace = GDB_entrada  # Volver al espacio de trabajo original
+feature = arcpy.GetParameterAsText(1)  # Feature con datos
+ruta_salida = arcpy.GetParameterAsText(2)  # Ruta de GDB para los resultados
+arcpy.env.workspace = ruta_salida  # Volver al espacio de trabajo original
 
 # Validación de entradas
 if not os.path.exists(ruta_salida):
     arcpy.AddError(f"La ruta de salida no existe: {ruta_salida}")
     raise ValueError("Ruta de salida inválida")
 
-# Crear una Geodatabase temporal para almacenar los resultados
-nombre_gdb = f"GDB_Servicio_Web.gdb"
-gdb_temporal = os.path.join(ruta_salida, nombre_gdb)
-arcpy.AddMessage(f"Creando Geodatabase de resultados: {gdb_temporal}")
-arcpy.CreateFileGDB_management(ruta_salida, nombre_gdb)
-
-
 #Crear feature data set
-
 out_name = f"Procesos_Biofisicos"
-
 # Crear Feature Dataset en la geodatabase de salida (output_gdb)
-output_dataset = os.path.join(gdb_temporal, out_name)
+output_dataset = os.path.join(ruta_salida, out_name)
 
 # Verificar si el Feature Dataset ya existe para evitar errores
 if not arcpy.Exists(output_dataset):
     spatial_ref = arcpy.SpatialReference(9377)
-    arcpy.management.CreateFeatureDataset(gdb_temporal, out_name, spatial_ref)
+    arcpy.management.CreateFeatureDataset(ruta_salida, out_name, spatial_ref)
 
 # Lista de nombres de los feature class específicos
 features_especificos = [
@@ -57,32 +48,7 @@ dissolve_fields_dict = {
     "_1261_Inundacion": ["BASE2001"]
 }
 
-# Buscar todos los feature datasets en la geodatabase de entrada
-feature_datasets = sorted(arcpy.ListDatasets(feature_type='feature') or [""])  # Manejo de None
-#arcpy.AddMessage(f"Se encontraron los siguientes feature data set: {feature_datasets}")
-
-# Inicializar una lista para almacenar las feature classes filtradas
-features_filtrados = []
-
-# Recorrer cada feature dataset y listar las feature classes
-for fd in feature_datasets:
-    # Cambiar el espacio de trabajo al feature dataset actual
-    arcpy.env.workspace = os.path.join(GDB_entrada, fd)
-    
-    # Listar las feature classes en el feature dataset
-    features_encontrados = arcpy.ListFeatureClasses()
-    
-    # Filtrar los feature class que coincidan con los nombres en la lista
-    features_filtrados.extend([f for f in features_encontrados if os.path.basename(f) in features_especificos])
-
-# Verificar si hay features que procesar
-if not features_filtrados:
-    arcpy.AddError("No se encontraron los feature class específicos en la geodatabase de entrada.")
-    raise ValueError("No se encontraron los feature class solicitados.")
-else:
-    arcpy.AddMessage(f"PROCESO EN COLA PARA LOS FEATURE CLASS ENCONTRADOS:")
-    arcpy.AddMessage(features_filtrados)
-
+# Procesamiento de los shapes de puntos originales
 
 def cubrimiento(Munpi, feature, gdb_temporal, output_dataset):
 
@@ -108,7 +74,7 @@ def cubrimiento(Munpi, feature, gdb_temporal, output_dataset):
             out_feature_class=os.path.join(gdb_temporal, f"{feature_name}_Dissolve"),
             dissolve_field=dissolve_fields,
             statistics_fields=None,
-            multi_part="MULTI_PART",
+            multi_part = False,
             unsplit_lines="DISSOLVE_LINES"
         )
         arcpy.AddMessage(f"Dissolve realizado para {feature_name} con campos {', '.join(dissolve_fields)}")
@@ -116,25 +82,25 @@ def cubrimiento(Munpi, feature, gdb_temporal, output_dataset):
         arcpy.AddWarning(f"No se encontraron campos de disolución para {feature_name}. Se omite el Dissolve.")
 
     # Realizando intersección con los municipios
-    clip = arcpy.analysis.Intersect(
+    clip = arcpy.analysis.PairwiseIntersect(
         in_features=[disolve, Munpi],
         out_feature_class=os.path.join(output_dataset, feature_name),
-        join_attributes="ONLY_FID",
-        cluster_tolerance=None,
+        join_attributes="ALL",
         output_type="INPUT"
     )
+
     arcpy.AddMessage(f"Clip municipal realizado para {feature_name}")
 
     # Añadir campos de DIVIPOLA y CUBRIMIENTO
     arcpy.management.AddField(clip, "DIVIPOLA", "TEXT")
     arcpy.management.AddField(clip, "CUBRIMIENTO", "DOUBLE")
 
-    lista = sorted(list(set([row[0] for row in arcpy.da.SearchCursor(Munpi, ['MpNombre'])])))
+    lista = sorted(list(set([row[0] for row in arcpy.da.SearchCursor(Munpi, ['OBJECTID'])])))
 
     # Permitir la iteración de cada elemento de la tabla de municipios a través de un query dinámico
     for i in lista:
-        SQL = "MpNombre = '{0}'".format(i)  # Comillas simples alrededor de {0} para manejar texto
-        arcpy.AddMessage(f"Iniciando iterador para municipio {i} ...")
+        SQL = "OBJECTID = {0}".format(i)  # Comillas simples alrededor de {0} para manejar texto
+        arcpy.AddMessage(f"Iniciando iterador para municipio {i} ................................")
         select_a = arcpy.management.SelectLayerByAttribute(Munpi, "NEW_SELECTION", SQL)
         select_b = arcpy.management.SelectLayerByLocation(clip, "WITHIN", select_a)
 
@@ -156,8 +122,17 @@ def cubrimiento(Munpi, feature, gdb_temporal, output_dataset):
     arcpy.AddMessage(f"Proceso finalizado para {feature_name}")
 
 # Procesar los features filtrados
-for feature in features_filtrados:
-    cubrimiento(Munpi, feature, gdb_temporal, output_dataset)
+
+# Procesar cada feature layer
+cubrimiento(Munpi, feature, ruta_salida, output_dataset)
 
 arcpy.AddMessage("-------------------------------------------------------------------------------------------------------")
 arcpy.AddMessage("PROCESO FINALIZADO CON ÉXITO")
+
+
+
+
+
+#######################################################################
+
+#Ajustar codigo para enrutar GDB manualmente
