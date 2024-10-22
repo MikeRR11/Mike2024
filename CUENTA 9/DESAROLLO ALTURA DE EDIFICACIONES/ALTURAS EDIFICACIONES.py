@@ -9,7 +9,9 @@ shp = arcpy.GetParameterAsText(0) #Shapefile de las edificiaciones
 MDT = arcpy.GetParameterAsText(1)  # Modelo digital de terreno a ras de piso
 MDS = arcpy.GetParameterAsText(2)   #Modelo de superficie con alturas
 altura_pisos = arcpy.GetParameterAsText(3) #Altura de los pisos 
-Ruta_Salida = arcpy.GetParameterAsText(4) # Ruta de salida
+usar_raster_pisos = arcpy.GetParameterAsText(4) #Condicional usar pisos 
+Raster_pisos = arcpy.GetParameterAsText(5) #Raster altura pisos
+Ruta_Salida = arcpy.GetParameterAsText(6) # Ruta de salida
 
 espacio = ".                                                                   ."
 
@@ -20,7 +22,7 @@ arcpy.env.overwriteOutput = True
 arcpy.AddMessage("INICIANDO PROCESO ...............")
 arcpy.AddMessage(espacio)
 # Crear una Geodatabase temporal para almacenar los resultados
-nombre_gdb = f"Zonificacion_Priorizada.gdb"
+nombre_gdb = f"Altura Edificaciones.gdb"
 gdb = os.path.join(Ruta_Salida, nombre_gdb)
 arcpy.AddMessage(f"Creando Geodatabase de resultados: {gdb}")
 arcpy.CreateFileGDB_management(Ruta_Salida, nombre_gdb)
@@ -34,18 +36,22 @@ arcpy.AddMessage(f"Feature class {Feature_Entrada} creado en la GDB")
 arcpy.AddMessage(espacio)
 
 #Generar centroides de los polignonos en gdb
-centroides = os.path.join(gdb, f"{Feature_Entrada}_Points")
+centroides = os.path.join(gdb, f"{Feature_Entrada}_Centroides")
 featuretopoint = arcpy.management.FeatureToPoint(shp_gdb, centroides, "INSIDE")
 arcpy.AddMessage(f"Centroides generados en: {centroides}")
 arcpy.AddMessage(espacio)
 #Crear raster de diferencia de alturas MDS - MDT??}
 
 # Crear raster de diferencia de alturas MDS - MDT
-altura_diff = arcpy.ia.Minus(MDS, MDT)
-raster_diff = os.path.join(gdb, 'Diferencia_Alturas')
-altura_diff.save(raster_diff)
-arcpy.AddMessage(f"Raster de diferencia de alturas creado: {raster_diff}")
-arcpy.AddMessage(espacio)
+
+if usar_raster_pisos == "false":
+    altura_diff = arcpy.ia.Minus(MDS, MDT)
+    raster_diff = os.path.join(gdb, 'Diferencia_Alturas')
+    altura_diff.save(raster_diff)
+    arcpy.AddMessage(f"Raster de diferencia de alturas creado: {raster_diff}")
+    arcpy.AddMessage(espacio)
+else:
+    raster_diff = os.path.join(Raster_pisos)
 
 # Raster to point con los centroides de los polígonos para extraer la altura y guardar en GDB
 puntos_altura = os.path.join(gdb, 'Puntos_Altura')
@@ -60,11 +66,11 @@ arcpy.AddMessage(espacio)
 
 
 #Agregar el número de pisos según la altura ingresada 
-arcpy.management.AddField(shp_gdb, "Número_Pisos", "DOUBLE")
+arcpy.management.AddField(shp_gdb, "Número_Pisos", "DOUBLE",field_scale = 0)
 SQL = f"math.floor(!RASTERVALU!/{altura_pisos})"
 arcpy.management.CalculateField(shp_gdb, "Número_Pisos",SQL, "PYTHON3")
-arcpy.AddMessage(f": Número de psios calculado{shp_gdb}")
-arcpy.AddMessage(espacio)
+arcpy.AddMessage(f"Número de pisos calculado en: {shp_gdb}")
+
 
 arcpy.AddMessage("PROCESO COMPLETADO CORRECTAMENTE.")
 
